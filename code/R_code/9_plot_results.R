@@ -297,26 +297,3 @@ bsdDNNPlot <- dplyr::filter(bsdDNNRes, usePix == 1) %>%
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot.png", sep="")
 ggsave(bsdDNNPlotName, bsdDNNPlot, width = 10, height = 7, units = "cm") 
 
-
-####### Agreement between FAS and HOS ###########
-#bsdAgreementFile <- "../../data/BSD_results/BSD_agreement.Rds"
-#modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
-#bsdAgreementRes <- readRDS(bsdAgreementFile)
-#bsdAgreementRes <- bsdAgreementRes[2:nrow(bsdAgreementRes),] %>%
-#  group_by(., usePix) %>%
-#  summarize(., meanFAS_HOS = mean(FAS_HOS), sdFAS_HOS = sd(FAS_HOS),
-#            meanFAS_FASHOS = mean(FAS_FASHOS), sdFAS_FASHOS = sd(FAS_FASHOS)) %>%
-#  ungroup()
-#
-#
-#textureAgreementFile <- "../../data/texture_results/texture_agreement.Rds"
-#modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
-#textureAgreementRes <- readRDS(textureAgreementFile)
-#textureAgreementRes <- textureAgreementRes[2:nrow(textureAgreementRes),] %>%
-#  group_by(., usePix) %>%
-#  summarize(., meanFAS_HOS = mean(FAS_HOS), sdFAS_HOS = sd(FAS_HOS),
-#            meanFAS_FASHOS = mean(FAS_FASHOS), sdFAS_FASHOS = sd(FAS_FASHOS)) %>%
-#  ungroup()
-#
-#
-#

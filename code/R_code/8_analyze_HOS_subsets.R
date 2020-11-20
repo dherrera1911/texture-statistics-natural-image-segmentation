@@ -13,15 +13,9 @@ dataFileDiff <- "../../data/BSD_stats/analysis_better_FASHOS_Diff_PCA.RDS"
 
 # load data files
 
-
-
 ############################################################
 ########## Plot coefficients of PS statistics ##############
 ############################################################
-
-
-
-
 
 paramTypeNames <- c("mm", "acr", "acm", "cmc", "pmc", "prc")
 

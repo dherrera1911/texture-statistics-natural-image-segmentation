@@ -1,51 +1,23 @@
+####################################################
+####################################################
 #### Functions for data processing and analysis ####
+####################################################
+####################################################
 
-#### Multi-use
+library(glmnet)
+library(dplyr)
+library(keras)
+library(caret)
+source("utility_functions.R")
 
-# from a vector with names of columns of a dataframe containing
-# Portilla-Simoncelli statistics, separate the names into the
-# kinds of statistics and experiment design names
-get_statistics_names <- function(dfNamesVec) {
-  # get the indices of the different types of stats to use
-  indPix <- c(grep("pix", dfNamesVec), grep("^LP", dfNamesVec))
-  namesPix <- dfNamesVec[indPix]
-  indFAS <- c(grep("mm", dfNamesVec), grep("acr", dfNamesVec))
-  namesFAS <- dfNamesVec[indFAS]
-  indHOS <- c(grep("acm", dfNamesVec), grep("cmc", dfNamesVec),
-               grep("pmc", dfNamesVec), grep("prc", dfNamesVec))
-  namesHOS <- dfNamesVec[indHOS]
-  indDesign <- which(!(dfNamesVec %in% c(namesPix, namesFAS, namesHOS)))
-  namesDesign <- dfNamesVec[indDesign]
-  subsetNames <- list(pixel = namesPix, FAS = namesFAS, HOS = namesHOS,
-                      design = namesDesign)
-  return(subsetNames)
-}
+#################################################
+###### Functions to operate on the stats matrices
+#################################################
 
 
-# permute vector not allowing any value to remain in same place
-derangement <- function(x, n){
-  outList <- list()
-  outList[[1]] <- x
-  for (vecN in c(1:n)) {
-    incomplete <- TRUE
-    while (incomplete) {
-      outVec <- base::sample(x)
-      allOkTemp <- TRUE
-      for (compN in c(1:vecN)) {
-        allOkTemp <- allOkTemp * !any(outVec == outList[[compN]])
-      }
-      incomplete <- incomplete * !allOkTemp
-    }
-    outList[[vecN+1]] <- outVec
-  }
-  outList <- outList[-1]
-  return(outList)
-}
-
-# normalize data so that trainStats have SD = 1
-# and mean 0, and testStats are normalized with the
-# same parameters. If testStats = NA, then only normalize
-# the trainStats
+# Normalize trainStats and teststats using mean
+# and SD from trainstats. If testStats = NA, then only
+# normalize and return trainStats
 normalize_data <- function(trainStats, testStats=NA) {
   #get means and SD
   trainMeans <- as.numeric(lapply(trainStats, mean))
@@ -61,12 +33,62 @@ normalize_data <- function(trainStats, testStats=NA) {
   return(normalizedData)
 }
 
-# make the task for the BSD dataset generating the pairs
-# with the differences in statistics. Generates 3 different
-# kinds of pairs: Within the pairs from the same segment
-# there is the split center segment and the split neighboring
-# segments, and the the pairs of different segments (center and
-# neighbors)
+
+# do PCA on the stats.
+statsPCA <- function(trainStats, testStats, varianceRetained = 0.95) {
+  trainPCA <- prcomp(trainStats)
+  prcSumm <- summary(trainPCA)
+  cummulativeVariance <- prcSumm[["importance"]][3,]
+  lastComp <- which(cummulativeVariance >= varianceRetained)[1]
+  rotationMat <- prcSumm$rotation[,1:lastComp]
+  trainPCAvals <- trainStats %*% rotationMat
+  testPCAvals <- testStats %*% rotationMat
+  output <- list(trainPCA = trainPCAvals, testPCA = testPCAvals)
+  return(output)
+}
+
+# do PCA sepparately on the different subgroups of stats
+subset_statsPCA <- function(trainStats, testStats, subsetList,
+                            varianceRetained = 0.95) {
+  trainPCall <- data.frame(row.names = c(1:nrow(trainStats)))
+  testPCall <- data.frame(row.names = c(1:nrow(testStats)))
+  if (!is.list(subsetList)) {
+    subsetList <- list(all = subsetList)
+  }
+  subsetNames <- names(subsetList) 
+  for (t in c(1:length(subsetList))) {
+    t_name <- subsetNames[t]
+    subsetStats <- subsetList[[t]]
+    subsetTrain <- dplyr::select(trainStats, all_of(subsetStats))
+    subsetTest <- dplyr::select(testStats, all_of(subsetStats))
+    trainPCA <- prcomp(subsetTrain)
+    prcSumm <- summary(trainPCA)
+    cummulativeVariance <- prcSumm[["importance"]][3,]
+    lastComp <- which(cummulativeVariance >= varianceRetained)[1]
+    rotationMat <- prcSumm$rotation[,1:lastComp]
+    trainPCAvals <- as.data.frame(as.matrix(subsetTrain) %*% rotationMat)
+    testPCAvals <- as.data.frame(as.matrix(subsetTest) %*% rotationMat)
+    # put the PCA vals into a dataframe
+    variableNames <- paste(t_name, "_PC", c(1:lastComp), sep="")
+    names(trainPCAvals) <- variableNames
+    names(testPCAvals) <- variableNames
+    trainPCall <- cbind(trainPCall, trainPCAvals)
+    testPCall <- cbind(testPCall, testPCAvals)
+  }
+  output <- list(trainPCA = trainPCall, testPCA = testPCall)
+  return(output)
+}
+
+
+#################################################
+###### Functions to preprocess data for analysis
+#################################################
+
+# Make the dataframe with the task for the BSD dataset.
+# Generates 2 different kinds of pairs:
+# Pairs from different segments (the center segments paired
+# with each neighbor), and pairs from same segment (a given
+# segment is split in half, be it center segment or a neighbor)
 make_task_BSD <- function(inputData){
   # make the rows for the "different" condition
   diffDf <- inputData %>%
@@ -101,8 +123,8 @@ make_task_BSD <- function(inputData){
 }
 
 
-# make a dataframe with substracted statistics of pairs of
-# textures that are same or different. For the same pairs,
+# Make the dataframe with the task for the textures.
+# For the same pairs,
 # it uses all possible combinations of the "quadrant" values.
 # For the different pairs, it makes nRep * 2 pairs for each texture
 # (that is, nRep pairs in total).
@@ -147,104 +169,9 @@ make_task_textures <- function(inputData, nRep){
 }
 
 
-# do PCA on the stats. Keep 90% variance
-statsPCA <- function(trainStats, testStats, varianceRetained = 0.95) {
-  trainPCA <- prcomp(trainStats)
-  prcSumm <- summary(trainPCA)
-  cummulativeVariance <- prcSumm[["importance"]][3,]
-  lastComp <- which(cummulativeVariance >= varianceRetained)[1]
-  rotationMat <- prcSumm$rotation[,1:lastComp]
-  trainPCAvals <- trainStats %*% rotationMat
-  testPCAvals <- testStats %*% rotationMat
-  output <- list(trainPCA = trainPCAvals, testPCA = testPCAvals)
-  return(output)
-}
-
-# do PCA sepparately on the different subgroups of stats
-subset_statsPCA <- function(trainStats, testStats, varianceRetained = 0.95) {
-  # get the subsets to which each stat belongs 
-  statsNames <- names(trainStats)
-  statsType <- subset_statistics(statsNames = statsNames)
-  types <- unique(statsType)
-  # get design cols
-  namesTemp <- get_statistics_names(statsNames)
-  designNames <- namesTemp$design
-  # get the PCs for each subset separtely
-  trainPCall <- data.frame(row.names = c(1:nrow(trainStats)))
-  testPCall <- data.frame(row.names = c(1:nrow(testStats)))
-  for (t in types) {
-    subsetStats <- statsNames[which(statsType == t)]
-    subsetTrain <- dplyr::select(trainStats, all_of(subsetStats))
-    subsetTest <- dplyr::select(testStats, all_of(subsetStats))
-    trainPCA <- prcomp(subsetTrain)
-    prcSumm <- summary(trainPCA)
-    cummulativeVariance <- prcSumm[["importance"]][3,]
-    lastComp <- which(cummulativeVariance >= varianceRetained)[1]
-    rotationMat <- prcSumm$rotation[,1:lastComp]
-    trainPCAvals <- as.data.frame(as.matrix(subsetTrain) %*% rotationMat)
-    testPCAvals <- as.data.frame(as.matrix(subsetTest) %*% rotationMat)
-    # put the PCA vals into a dataframe
-    variableNames <- paste(t, "_PC", c(1:lastComp), sep="")
-    names(trainPCAvals) <- variableNames
-    names(testPCAvals) <- variableNames
-    trainPCall <- cbind(trainPCall, trainPCAvals)
-    testPCall <- cbind(testPCall, testPCAvals)
-  }
-  output <- list(trainPCA = trainPCall, testPCA = testPCall)
-  return(output)
-}
-
-# takes a vector of class predictions and a reference vector, and
-# returns a vector indicating for each prediction whether it is
-# a true positive (TP), false negative (FN), true negative (TN),
-# or false positive (FP)
-confusion_indices <- function(predictions, reference) {
-  trueInds <- predictions == reference
-  falseInds <- predictions != reference
-  positiveInd <- as.integer(reference) == 1
-  negativeInd <- as.integer(reference) != 1
-  confusionVec <- NULL
-  confusionVec[which(trueInds & positiveInd)] <- "TP"
-  confusionVec[which(falseInds & positiveInd)] <- "FN"
-  confusionVec[which(trueInds & negativeInd)] <- "TN"
-  confusionVec[which(falseInds & negativeInd)] <- "FP"
-  return(confusionVec)
-}
-
-# return a vector indicating the subset to which each statistic
-# in a statistics name vector belongs
-subset_statistics <- function(statsNames) {
-  paramTypeNames <- c("mm", "acr", "acm", "cmc", "pmc", "prc")
-  tempVec <- rep(NA, length(statsNames))
-  for (pN in paramTypeNames) {
-    paramInds  <- grep(paste("^", pN, sep=""), statsNames)
-    tempVec[paramInds] <- pN
-  }
-  return(tempVec)
-}
-
-
-####################
-###### used for ROC
-####################
-
-# calculate angle between vectors. The second input
-# can be a matrix, and the dot product is computed
-# with each row
-vec_angle <- function(inputVec, inputMat) {
-  if (is.null(dim(inputMat))) {
-    dotProd <-  inputVec %*% inputMat
-    matLength <- sqrt(sum(inputMat^2))
-  } else {
-    dotProd <-  inputVec %*% t(inputMat)
-    matLength <- sqrt(rowSums(inputMat^2))
-  }
-  vecLength <- sqrt(sum(inputVec^2))
-  angleCos <- dotProd / (vecLength * matLength)
-  angles <- acos(pmin(pmax(angleCos, -1.0), 1.0))
-  return(as.numeric(angles))
-}
-  
+###############################
+###### Analysis functionns
+###############################
 
 # make a dataframe with dot products of pairs of
 # textures that belong to the same image in inputData.
@@ -291,5 +218,132 @@ compute_angles <- function(inputData){
     angleDf <- rbind(angleDf, tempDf)
   }
   return(angleDf)
+}
+
+# Generate a list with the prepared data to train and test a model
+prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
+                             balanceWeights = TRUE, subsetsPCA=NA) {
+  # calculate weights to even out classes
+  weights <- rep(1, nrow(trainData))
+  if (balanceWeights) {
+    ratioSame <- sum(trainData$same) / sum(1-trainData$same)
+    weights[trainData$same == 1] <- (1/ratioSame)
+  }
+  # extract labels
+  trainLabel <- trainData$same
+  testLabel <- testData$same
+  # extract statistics
+  if (is.na(statsToUse[1])) {
+    allStatsNames <- get_statistics_names(names(trainData))
+    statsToUse <- c(allStatsNames$pixel, allStatsNames$FAS, allStatsNames$HOS)  
+  } else if (is.list(statsToUse)) {
+      statsToUse <- unlist_names(statsToUse)
+  }
+  trainStats <- dplyr::select(trainData, all_of(statsToUse))
+  testStats <- dplyr::select(testData, all_of(statsToUse))
+  # Normalize the statistics
+  normalizedStats <- normalize_data(trainStats = trainStats,
+                                          testStats = testStats)
+  trainStats <- as.data.frame(normalizedStats$train)
+  testStats <- as.data.frame(normalizedStats$test)
+  # If required, do PCA
+  if (!is.na(subsetsPCA[1])) {
+    pcaStats <- subset_statsPCA(trainStats, testStats, subsetsPCA)
+    trainStats <- pcaStats$trainPCA
+    testStats <- pcaStats$testPCA
+  }
+  # fit the model
+  preparedData <- list(trainStats = trainStats,
+                       testStats = testStats,
+                       trainLabel = trainLabel,
+                       testLabel = testLabel,
+                       weights = weights)
+  return(preparedData)
+}
+
+
+# Train a ridge regression model on given train and test data.
+train_test_ridge <- function(trainData, testData, statsToUse=NA,
+                             balanceWeights = TRUE, subsetsPCA=NA) {
+  preparedData <- prepare_data_fit_test(trainData, testData,
+                                        statsToUse, balanceWeights,
+                                        subsetsPCA)
+  # fit the model
+  modelFit <- cv.glmnet(x = as.matrix(preparedData$trainStats),
+                       y = preparedData$trainLabel,
+                       weights = preparedData$weights,
+                       family="binomial",
+                       alpha = 0, # alpha = 0 is ridge regression
+                       standardize=FALSE,
+                       type.measure="class")
+  modelPredictions <- predict(modelFit, as.matrix(preparedData$testStats),
+                                 type = "class")
+  correctPredictions <- as.integer(modelPredictions == preparedData$testLabel)
+  predictionOutcome <- mean(correctPredictions)
+  confusionMatrix <- caret::confusionMatrix(factor(modelPredictions),
+                                                     factor(preparedData$testLabel))
+  modelOutput <- list(predictions = modelPredictions,
+                      accuracy = predictionOutcome,
+                      correctPredictions = correctPredictions,
+                      confusionMatrix = confusionMatrix)
+  return(modelOutput)
+}
+
+# make dnn model
+make_dnn_model <- function(layerUnits, inputShape, regularizationWeight) {
+  mod <- kerasR::Sequential()
+  mod$add(kerasR::Dense(units = layerUnits[1], input_shape = inputShape))
+  mod$add(kerasR::ActivityRegularization(l1=regularizationWeight))
+  mod$add(kerasR::Activation("relu"))
+  layerUnits <- layerUnits[-1]
+  if (length(layerUnits) == 0) {
+    for (u in layerUnits) {
+      mod$add(kerasR::Dense(units = u))
+      mod$add(kerasR::ActivityRegularization(l1=regularizationWeight))
+      mod$add(kerasR::Activation("relu"))
+    }
+  }
+  mod$add(kerasR::Dense(units = 1))
+  mod$add(kerasR::Activation("sigmoid"))
+  kerasR::keras_compile(mod, loss = "binary_crossentropy",
+                        metrics = "binary_accuracy", optimizer = kerasR::Adam())
+  return(mod)
+}
+
+
+# Train a ridge regression model on given train and test
+# data.
+train_test_dnn <- function(trainData, testData, statsToUse=NA,
+                           balanceWeights = TRUE, subsetsPCA=NA,
+                           layerUnits=c(30,10), regularizationWeight=0.002,
+                           epochs=200) {
+  preparedData <- prepare_data_fit_test(trainData, testData,
+                                        statsToUse, balanceWeights,
+                                        subsetsPCA)
+  modelDNN <- make_dnn_model(layerUnits, ncol(preparedData$trainStats),
+                             regularizationWeight)
+  # move sample weights to python
+  np <- reticulate::import("numpy", convert=FALSE)
+  pyWeights <- np$array(reticulate::r_to_py(preparedData$weights))
+  # fit the model
+  kerasR::keras_fit(modelDNN, as.matrix(preparedData$trainStats),
+                    preparedData$trainLabel, batch_size=32,
+                    epochs = epochs, verbose = 2,
+                    validation_data = list(as.matrix(preparedData$testStats),
+                                           preparedData$testLabel),
+                    sample_weight=pyWeights)
+                    #class_weight=list(0.1,1))
+  # predict classes and return performance
+  modelPredictions <- kerasR::keras_predict_classes(modelDNN,
+                                        as.matrix(preparedData$testStats))
+  correctPredictions <- as.integer(modelPredictions == preparedData$testLabel)
+  predictionOutcome <- mean(correctPredictions)
+  confusionMatrix <- caret::confusionMatrix(factor(modelPredictions),
+                                                     factor(preparedData$testLabel))
+  modelOutput <- list(predictions = modelPredictions,
+                      accuracy = predictionOutcome,
+                      correctPredictions = correctPredictions,
+                      confusionMatrix = confusionMatrix)
+  return(modelOutput)
 }
 

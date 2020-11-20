@@ -1,0 +1,119 @@
+library(tidyr)
+library(dplyr)
+library(glmnet)
+library(caret)
+library(vcd)
+source("./analysis_functions.R")
+set.seed(2691)
+
+#dataFile <- "../../data/texture_stats/texture_stats.csv"
+#dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
+dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
+
+saveBetterHOSpairs <- "../../data/BSD_stats/pairs_HOS_better.Rds"
+saveBetterFASHOSpairs <- "../../data/BSD_stats/pairs_FASHOS_better.Rds"
+
+dataSplits <- 10
+
+#############################
+# load data
+#############################
+segmentStats <- read.csv(dataFile, sep = ",") %>%
+  as_tibble(.)
+
+#############################
+# get the names of the different stats to use
+#############################
+parNames <- names(segmentStats)
+statisticsNames <- get_statistics_names(parNames)
+designNames <- statisticsNames$design
+statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
+
+#############################
+#generate template of design matrix for one repetition
+#############################
+pixel <- c(0)
+FAS <- c(0,1)
+HOS <- c(0,1)
+statsTypes <- c("pixel", "FAS", "HOS")
+designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
+  dplyr::mutate(., rep = NA, performance = NA) %>%
+  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
+  dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
+resultsDf <- NULL
+
+
+# initialize lists and dfs
+resultsDf <- data.frame(FA = double(), HOS = double(), FA_HOS = double())
+betterHOSDf <- NULL
+betterFASHOSDf <- NULL
+
+#################################################
+# Make test splits to cover all images
+#################################################
+nSegments <- length(unique(segmentStats$ImageName))
+sampleSegments <- sample(unique(segmentStats$ImageName))
+splitSize <- ceiling(nSegments/dataSplits)
+testSegmentsList <- split(sampleSegments,
+                          ceiling(seq_along(sampleSegments)/splitSize))
+
+allDataTask <- make_task_BSD(segmentStats)
+
+for (r in 1:dataSplits) {
+  # get the segments to test, and split the rest into two training sets
+  testSegments <- testSegmentsList[[r]]
+  trainSegmentsAll <- sampleSegments[which(!sampleSegments %in% testSegments)]
+  trainSegmentsAll <- sample(trainSegmentsAll)
+  nTrainSegs <- length(trainSegmentsAll)
+  halfTrainSegs <- round(nTrainSegs/2)
+  trainSegments1 <- trainSegmentsAll[1:halfTrainSegs]
+  trainSegments2 <- trainSegmentsAll[(halfTrainSegs+1):nTrainSegs]
+
+  trainDataSplit <- list()
+  trainDataSplit[[1]] <- dplyr::filter(allDataTask, ImageName %in% trainSegments1) %>%
+    droplevels(.) %>%
+    as_tibble(.)
+  trainDataSplit[[2]] <- dplyr::filter(allDataTask, ImageName %in% trainSegments2) %>%
+    droplevels(.) %>%
+    as_tibble(.)
+  testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
+    droplevels(.) %>%
+    as_tibble(.)
+
+  # train and test models for the two training set splits
+  betterHOSPairs <- list()
+  betterFASHOSPairs <- list()
+  for (s in c(1:2)) {
+    trainData <- trainDataSplit[[s]]
+    # fit to FAS
+    outputFAS <- train_test_ridge(trainData, testData, statisticsNames$FAS,
+                     balanceWeights=TRUE, subsetsPCA=NA)
+    outputHOS <- train_test_ridge(trainData, testData, statisticsNames$HOS,
+                     balanceWeights=TRUE, subsetsPCA=NA)
+    outputFASHOS <- train_test_ridge(trainData, testData,
+                                     unlist_names(statisticsNames[c(2,3)]),
+                                     balanceWeights=TRUE, subsetsPCA=NA)
+
+    ##### Get pairs where FAS failed but HOS or FAS+HOS succeeded
+    wrongPairsFAS <- which(outputFAS$correctPredictions==0)
+    correctPairsHOS <-  which(outputHOS$correctPredictions==1)
+    correctPairsFASHOS <- which(outputFASHOS$correctPredictions==1)
+
+    betterHOSPairs[[s]] <- wrongPairsFAS[which(wrongPairsFAS %in%
+                                               correctPairsHOS)]
+    betterFASHOSPairs[[s]] <- wrongPairsFAS[which(wrongPairsFAS %in%
+                                                  correctPairsFASHOS)]
+  }
+
+  betterHOSAgree <- betterHOSPairs[[1]][which(betterHOSPairs[[1]] %in%
+                                                 betterHOSPairs[[2]])]
+  betterFASHOSAgree <- betterFASHOSPairs[[1]][which(betterFASHOSPairs[[1]] %in%
+                                                       betterFASHOSPairs[[2]])]
+  betterHOSDf <- rbind(betterHOSDf, testData[betterHOSAgree,])
+  betterFASHOSDf <- rbind(betterFASHOSDf, testData[betterFASHOSAgree,])
+}
+
+# save dataframe with segment pairs where HOS is better
+saveRDS(betterHOSDf, saveBetterHOSpairs)
+saveRDS(betterFASHOSDf, saveBetterFASHOSpairs)
+
