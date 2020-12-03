@@ -45,7 +45,9 @@ remove_constant_stats <- function(rawData) {
   statsDf <- dplyr::select(rawData, statisticsNames) 
   statsSD <- as.numeric(lapply(statsDf, sd))
   noVarInds <- which(statsSD == 0)
-  statsDf <- statsDf[, -noVarInds]
+  if (length(noVarInds)>0) {
+    statsDf <- statsDf[, -noVarInds]
+  }
   designDf <- dplyr::select(rawData, varNames$design)
   outputDf <- cbind(designDf, statsDf)
   return(outputDf)
