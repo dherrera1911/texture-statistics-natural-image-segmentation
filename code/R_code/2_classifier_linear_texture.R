@@ -17,7 +17,9 @@ repExp <- 20
 # load data
 #############################
 textureStats <- read.csv(dataFile, sep = ",") %>%
-  as_tibble(.)
+  as_tibble(.) %>%
+  remove_constant_stats(.)
+
 
 #############################
 # get the names of the different stats to use
@@ -58,8 +60,7 @@ for (r in 1:repExp) {
     dplyr::mutate(., rep = r)
 
   # if selected, do pixel stats model
-
-  for (m in c(1:length(nrow(copyTemplate)))) {
+  for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
     trialTypes <- statsTypes[statsInd]
     trialStatsList <- statisticsNames[trialTypes]

@@ -19,7 +19,8 @@ epochs <- 200
 # load data
 #############################
 textureStats <- read.csv(dataFile, sep = ",") %>%
-  as_tibble(.)
+  as_tibble(.) %>%
+  remove_constant_stats(.)
 
 #############################
 # get the names of the different stats to use
@@ -77,6 +78,4 @@ for (r in 1:repExp) {
 }
 
 saveRDS(resultsDf, saveResults)
-
-
 

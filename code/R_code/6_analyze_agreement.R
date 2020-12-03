@@ -19,7 +19,8 @@ dataSplits <- 10
 # load data
 #############################
 segmentStats <- read.csv(dataFile, sep = ",") %>%
-  as_tibble(.)
+  as_tibble(.) %>%
+  remove_constant_stats(.)
 
 #############################
 # get the names of the different stats to use

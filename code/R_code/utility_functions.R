@@ -37,6 +37,23 @@ get_statistics_names <- function(dfNamesVec, subsetHOS = FALSE) {
   return(subsetNames)
 }
 
+# remove statistics with 0 variance
+remove_constant_stats <- function(rawData) {
+  varNames <- get_statistics_names(names(rawData))
+  statisticsNames <- varNames[which(names(varNames)!="design")]
+  statisticsNames <- unlist_names(statisticsNames)
+  statsDf <- dplyr::select(rawData, statisticsNames) 
+  statsSD <- as.numeric(lapply(statsDf, sd))
+  noVarInds <- which(statsSD == 0)
+  statsDf <- statsDf[, -noVarInds]
+  designDf <- dplyr::select(rawData, varNames$design)
+  outputDf <- cbind(designDf, statsDf)
+  return(outputDf)
+}
+   
+
+
+
 # permute vector not allowing any value to remain in same place
 derangement <- function(x, n){
   outList <- list()
