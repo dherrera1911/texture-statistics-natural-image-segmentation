@@ -8,10 +8,10 @@ set.seed(2691)
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/BSD_dnn2.Rds"
 
-repExp <- 20
-layerUnits <- c(30, 10)
-regularizationWeight <- 0.002
-epochs <- 200
+repExp <- 10
+layerUnits <- list(c(30), c(30, 10), c(30, 10, 2), c(50, 20), c(50, 20, 5), c(10, 2))
+regularizationWeight <- c(0.001, 0.002, 0.004)
+epochs <- c(150, 200, 300)
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -46,7 +46,6 @@ resultsDf <- NULL
 allDataTask <- make_task_BSD(segmentStats)
 
 for (r in 1:repExp) {
-  # split data into train and test set
   nSegments <- length(unique(segmentStats$ImageName))
   sampleSegments <- sample(unique(segmentStats$ImageName))
   trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
@@ -57,25 +56,39 @@ for (r in 1:repExp) {
   testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
     droplevels(.)
 
-  copyTemplate <- designMatrixTemp %>%
-    dplyr::mutate(., rep = r)
-
-  for (m in c(1:length(nrow(copyTemplate)))) {
-    statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
-    trialTypes <- statsTypes[statsInd]
-    trialStatsList <- statisticsNames[trialTypes]
-    trialStatsVec <- unlist_names(trialStatsList) 
-    modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
-                     statsToUse=trialStatsVec, balanceWeights=TRUE,
-                     subsetsPCA=list(all=trialStatsVec),
-                     layerUnits=layerUnits,
-                     regularizationWeight=regularizationWeight,
-                     epochs=epochs)
-    copyTemplate$performance[m] <- modelOutcome$accuracy
+  for (arq in c(1:length(layerUnits))) {
+    archString <- paste(layerUnits[[arq]], sep="-", collapse="-")
+    for (regW in regularizationWeight) {
+      for (ep in epochs) {
+        # split data into train and test set
+        copyTemplate <- designMatrixTemp %>%
+          dplyr::mutate(., rep = r)
+        copyTemplate$architecture <- archString
+        copyTemplate$regularization <- regW
+        copyTemplate$epochs <- ep
+        for (m in c(1:length(nrow(copyTemplate)))) {
+          statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
+          trialTypes <- statsTypes[statsInd]
+          trialStatsList <- statisticsNames[trialTypes]
+          trialStatsVec <- unlist_names(trialStatsList) 
+          modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
+                           statsToUse=trialStatsVec, balanceWeights=TRUE,
+                           subsetsPCA=list(all=trialStatsVec),
+                           layerUnits=layerUnits[[arq]],
+                           regularizationWeight=regW,
+                           epochs=ep)
+          copyTemplate$performance[m] <- modelOutcome$accuracy
+          progressText <- paste("Rep:", r, "  Architecture:", archString,
+                                "  RegW:", regW, "  Epochs:", ep,
+                                "  Stats comb:", m, sep="")
+          print(progressText)
+        }
+      resultsDf <- rbind(resultsDf, copyTemplate)
+      saveRDS(resultsDf, saveResults)
+      }
+    }
   }
-  resultsDf <- rbind(resultsDf, copyTemplate)
 }
 
 # save results
-saveRDS(resultsDf, saveResults)
 
