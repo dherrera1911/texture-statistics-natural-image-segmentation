@@ -6,12 +6,6 @@ library(vcd)
 source("./analysis_functions.R")
 set.seed(2691)
 
-# data files
-dataFileHOS <- "../../data/BSD_stats/analysis_better_HOS_PCA.RDS"
-dataFileFASHOS <- "../../data/BSD_stats/analysis_better_FASHOS_PCA.RDS"
-dataFileDiff <- "../../data/BSD_stats/analysis_better_FASHOS_Diff_PCA.RDS"
-
-# load data files
 
 ############################################################
 ########## Plot coefficients of PS statistics ##############

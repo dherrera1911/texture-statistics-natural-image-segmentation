@@ -97,7 +97,7 @@ for (r in 1:dataSplits) {
 
   agreementDf <- rbind(agreementDf, testData)
   # save dataframe with segment pairs where HOS is better
-  saveRDS(agreementDf, saveBetterHOSpairs)
+  saveRDS(agreementDf, saveAgreementFile)
   progressStr <- paste("Data split: ", r, "/", dataSplits, sep="")
   print(progressStr)
 }
