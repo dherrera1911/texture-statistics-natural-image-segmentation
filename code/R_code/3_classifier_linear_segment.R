@@ -7,7 +7,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/BSD_results.Rds"
+saveResults <- "../../data/BSD_results/3_BSD_results.Rds"
 repExp <- 20
 
 #############################

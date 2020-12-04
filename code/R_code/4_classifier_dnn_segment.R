@@ -5,7 +5,8 @@ source("./analysis_functions.R")
 set.seed(2691)
 
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/BSD_dnn2.Rds"
+#saveResults <- "../../data/BSD_results/BSD_dnn2.Rds"
+saveResults <- "../../data/BSD_results/4_BSD_dnn.Rds"
 
 repExp <- 10
 layerUnits <- list(c(30), c(30, 10), c(30, 10, 2), c(50, 20), c(50, 20, 5), c(10, 2))

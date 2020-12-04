@@ -9,8 +9,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveBetterHOSpairs <- "../../data/BSD_stats/pairs_HOS_better.Rds"
-saveBetterFASHOSpairs <- "../../data/BSD_stats/pairs_FASHOS_better.Rds"
+saveAgreementFile <- "../../data/BSD_stats/6_classification_agreement.Rds"
 
 dataSplits <- 10
 
@@ -40,6 +39,7 @@ testSegmentsList <- split(sampleSegments,
 
 allDataTask <- make_task_BSD(segmentStats)
 
+agreementDf <- NULL
 for (r in 1:dataSplits) {
   # get the segments to test, and split the rest into two training sets
   testSegments <- testSegmentsList[[r]]
@@ -90,11 +90,14 @@ for (r in 1:dataSplits) {
                                                  betterHOSPairs[[2]])]
   betterFASHOSAgree <- betterFASHOSPairs[[1]][which(betterFASHOSPairs[[1]] %in%
                                                        betterFASHOSPairs[[2]])]
-  betterHOSDf <- rbind(betterHOSDf, testData[betterHOSAgree,])
-  betterFASHOSDf <- rbind(betterFASHOSDf, testData[betterFASHOSAgree,])
+  testData$betterHOS <- 0 
+  testData$betterHOS[betterHOSAgree] <- 1
+  testData$betterFASHOS <- 0 
+  testData$betterFASHOS[betterFASHOSAgree] <- 1
+
+  agreementDf <- rbind(agreementDf, testData)
   # save dataframe with segment pairs where HOS is better
-  saveRDS(betterHOSDf, saveBetterHOSpairs)
-  saveRDS(betterFASHOSDf, saveBetterFASHOSpairs)
+  saveRDS(agreementDf, saveBetterHOSpairs)
   progressStr <- paste("Data split: ", r, "/", dataSplits, sep="")
   print(progressStr)
 }

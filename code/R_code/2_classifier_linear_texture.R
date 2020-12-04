@@ -8,7 +8,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
 
-saveResults <- "../../data/texture_results/texture_results.Rds"
+saveResults <- "../../data/texture_results/2_texture_results.Rds"
 
 nRep <- 5
 repExp <- 20
