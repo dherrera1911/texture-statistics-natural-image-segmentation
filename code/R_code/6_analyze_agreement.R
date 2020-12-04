@@ -9,7 +9,6 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-
 saveBetterHOSpairs <- "../../data/BSD_stats/pairs_HOS_better.Rds"
 saveBetterFASHOSpairs <- "../../data/BSD_stats/pairs_FASHOS_better.Rds"
 
@@ -29,25 +28,6 @@ parNames <- names(segmentStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
-
-#############################
-#generate template of design matrix for one repetition
-#############################
-pixel <- c(0)
-FAS <- c(0,1)
-HOS <- c(0,1)
-statsTypes <- c("pixel", "FAS", "HOS")
-designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
-  dplyr::mutate(., rep = NA, performance = NA) %>%
-  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
-  dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
-resultsDf <- NULL
-
-
-# initialize lists and dfs
-resultsDf <- data.frame(FA = double(), HOS = double(), FA_HOS = double())
-betterHOSDf <- NULL
-betterFASHOSDf <- NULL
 
 #################################################
 # Make test splits to cover all images
@@ -112,9 +92,10 @@ for (r in 1:dataSplits) {
                                                        betterFASHOSPairs[[2]])]
   betterHOSDf <- rbind(betterHOSDf, testData[betterHOSAgree,])
   betterFASHOSDf <- rbind(betterFASHOSDf, testData[betterFASHOSAgree,])
+  # save dataframe with segment pairs where HOS is better
+  saveRDS(betterHOSDf, saveBetterHOSpairs)
+  saveRDS(betterFASHOSDf, saveBetterFASHOSpairs)
+  progressStr <- paste("Data split: ", r, "/", dataSplits, sep="")
+  print(progressStr)
 }
-
-# save dataframe with segment pairs where HOS is better
-saveRDS(betterHOSDf, saveBetterHOSpairs)
-saveRDS(betterFASHOSDf, saveBetterFASHOSpairs)
 

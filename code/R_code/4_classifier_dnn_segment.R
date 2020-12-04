@@ -1,7 +1,6 @@
 library(tidyr)
 library(dplyr)
 library(glmnet)
-library(matrixStats)
 source("./analysis_functions.R")
 set.seed(2691)
 
