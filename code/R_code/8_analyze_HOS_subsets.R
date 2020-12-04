@@ -1,54 +1,77 @@
 library(tidyr)
 library(dplyr)
 library(glmnet)
-library(caret)
-library(vcd)
 source("./analysis_functions.R")
 set.seed(2691)
 
+#dataFile <- "../../data/texture_stats/texture_stats.csv"
+#dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
+dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
+saveResults <- "../../data/BSD_results/3_BSD_results.Rds"
+repExp <- 20
 
-############################################################
-########## Plot coefficients of PS statistics ##############
-############################################################
+#############################
+# load data
+#############################
+segmentStats <- read.csv(dataFile, sep = ",") %>%
+  as_tibble(.) %>%
+  remove_constant_stats(.)
 
-paramTypeNames <- c("mm", "acr", "acm", "cmc", "pmc", "prc")
+#############################
+# get the names of the different stats to use
+#############################
+parNames <- names(segmentStats)
+statisticsNames <- get_statistics_names(parNames)
+designNames <- statisticsNames$design
+statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 
-coefBetterHOS <- statisticsHOSBetter$coefBetterHOS
-coefDf <- data.frame(paramName = rownames(coefBetterHOS[[1]]))
-for (l in c(1:length(coefBetterHOS))) {
-  colName <- paste("rep", l, sep="")
-  coefDf[[colName]] <- as.numeric(coefBetterHOS[[l]])
+#############################
+#generate template of design matrix for one repetition
+#############################
+pixel <- c(0,1)
+FAS <- c(0,1)
+HOS <- c(0,1)
+statsTypes <- c("pixel", "FAS", "HOS")
+designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
+  dplyr::mutate(., rep = NA, performance = NA) %>%
+  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
+  dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
+resultsDf <- NULL
+
+#############################
+#Put together the pairs of patches
+#############################
+allDataTask <- make_task_BSD(segmentStats)
+
+#############################
+#Fit the models
+#############################
+for (r in 1:repExp) {
+  # split data into train and test set
+  nSegments <- length(unique(segmentStats$ImageName))
+  sampleSegments <- sample(unique(segmentStats$ImageName))
+  trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
+  testSegments <- sampleSegments[(floor(nSegments*4/5)+1):nSegments]
+
+  trainData <- dplyr::filter(allDataTask, ImageName %in% trainSegments) %>%
+    droplevels(.)
+  testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
+    droplevels(.)
+  
+  copyTemplate <- designMatrixTemp %>%
+    dplyr::mutate(., rep = r)
+
+  for (m in c(1:length(nrow(copyTemplate)))) {
+    statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
+    trialTypes <- statsTypes[statsInd]
+    trialStatsList <- statisticsNames[trialTypes]
+    trialStatsVec <- unlist_names(trialStatsList) 
+    modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
+                     statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
+    copyTemplate$performance[m] <- modelOutcome$accuracy
+  }
+  resultsDf <- rbind(resultsDf, copyTemplate)
 }
-repNamesCol <- paste("rep", c(1:length(coefBetterHOS)), sep="")
 
-coefDf$colMeans <- dplyr::select(coefDf, repNamesCol) %>%
-  as.matrix(.) %>%
-  rowMeans(.)
-
-coefDf <- dplyr::as_tibble(coefDf)
-
-nonParam <- which(!(coefDf$paramName %in% c(namesFAS, namesHOS)))
-coefDf <- coefDf[-nonParam,]
-
-coefDf$paramType <- subset_statistics(paramTypeNames = paramTypeNames,
-                               paramVec = coefDf$paramName)
-
-plotDf <- tidyr::pivot_longer(coefDf, cols = repNamesCol,
-                              names_to = "rep",
-                              values_to = "coefVal")
-
-coefPlot <- ggplot(plotDf, aes(x = factor(paramType), y = abs(coefVal),
-                               fill = factor(paramType))) +
-  geom_violin() + 
-  stat_summary(fun="median", geom="point")
-
-
-statsSummary <- group_by(plotDf, paramName, paramType) %>%
-  summarize(., coefMean = mean(coefVal), coefSD = sd(coefVal)) %>%
-  ungroup(.)
-
-coefPlot <- ggplot(statsSummary, aes(x = factor(paramType), y = coefMean,
-                               fill = factor(paramType))) +
-  geom_violin() +
-  stat_summary(fun="median", geom="point")
+saveRDS(resultsDf, saveResults)
 
