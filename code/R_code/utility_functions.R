@@ -20,6 +20,7 @@ get_statistics_names <- function(dfNamesVec, subsetHOS = FALSE) {
     indHOS <- c(grep("acm", dfNamesVec), grep("cmc", dfNamesVec),
                  grep("pmc", dfNamesVec), grep("prc", dfNamesVec))
     namesHOS <- dfNamesVec[indHOS]
+    namesHOSVec <- namesHOS
   } else {
     indACM <- grep("acm", dfNamesVec)
     indCMC <- grep("cmc", dfNamesVec)
@@ -29,8 +30,9 @@ get_statistics_names <- function(dfNamesVec, subsetHOS = FALSE) {
                      cmc = dfNamesVec[indCMC],
                      pmc = dfNamesVec[indPMC],
                      prc = dfNamesVec[indPRC])
+    namesHOSVec <- unlist_names(namesHOS)
   }
-  indDesign <- which(!(dfNamesVec %in% c(namesPix, namesFAS, namesHOS)))
+  indDesign <- which(!(dfNamesVec %in% c(namesPix, namesFAS, namesHOSVec)))
   namesDesign <- dfNamesVec[indDesign]
   subsetNames <- list(pixel = namesPix, FAS = namesFAS, HOS = namesHOS,
                       design = namesDesign)

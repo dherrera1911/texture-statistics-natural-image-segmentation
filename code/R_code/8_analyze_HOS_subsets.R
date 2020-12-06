@@ -7,8 +7,9 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/3_BSD_results.Rds"
-repExp <- 20
+savePerformanceResults <- "../../data/BSD_results/8_subset_stats_performance.RDS"
+saveTexturePredictions <- "../../data/BSD_results/8_texture_predictions_subsetsRDS"
+dataSplits <- 10
 
 #############################
 # load data
@@ -21,22 +22,37 @@ segmentStats <- read.csv(dataFile, sep = ",") %>%
 # get the names of the different stats to use
 #############################
 parNames <- names(segmentStats)
-statisticsNames <- get_statistics_names(parNames)
+statisticsNames <- get_statistics_names(parNames, subsetHOS=TRUE)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 
 #############################
 #generate template of design matrix for one repetition
 #############################
-pixel <- c(0,1)
+HOStypes <- names(statisticsNames$HOS)
 FAS <- c(0,1)
-HOS <- c(0,1)
-statsTypes <- c("pixel", "FAS", "HOS")
-designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
-  dplyr::mutate(., rep = NA, performance = NA) %>%
-  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
-  dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
-resultsDf <- NULL
+acm <- c(0,1)
+cmc <- c(0,1)
+pmc <- c(0,1)
+prc <- c(0,1)
+
+designMatrixTemp <- expand.grid(FAS, acm, cmc, pmc, prc) %>%
+  dplyr::mutate(., rep=NA, performance=NA) %>%
+  dplyr::rename(., FAS=Var1, acm=Var2, cmc=Var3,
+                pmc=Var4, prc=Var5)
+
+modelPerformance <- NULL
+texturePredictions <- NULL
+
+
+#################################################
+# Make test splits to cover all images
+#################################################
+nSegments <- length(unique(segmentStats$ImageName))
+sampleSegments <- sample(unique(segmentStats$ImageName))
+splitSize <- ceiling(nSegments/dataSplits)
+testSegmentsList <- split(sampleSegments,
+                          ceiling(seq_along(sampleSegments)/splitSize))
 
 #############################
 #Put together the pairs of patches
@@ -47,11 +63,9 @@ allDataTask <- make_task_BSD(segmentStats)
 #Fit the models
 #############################
 for (r in 1:repExp) {
-  # split data into train and test set
-  nSegments <- length(unique(segmentStats$ImageName))
-  sampleSegments <- sample(unique(segmentStats$ImageName))
-  trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
-  testSegments <- sampleSegments[(floor(nSegments*4/5)+1):nSegments]
+  # get the segments to test, and split the rest into two training sets
+  testSegments <- testSegmentsList[[r]]
+  trainSegments <- sampleSegments[which(!sampleSegments %in% testSegments)]
 
   trainData <- dplyr::filter(allDataTask, ImageName %in% trainSegments) %>%
     droplevels(.)
@@ -61,17 +75,27 @@ for (r in 1:repExp) {
   copyTemplate <- designMatrixTemp %>%
     dplyr::mutate(., rep = r)
 
+  textureResultsDf <- dplyr::select(testData, same, designNames)
+
   for (m in c(1:length(nrow(copyTemplate)))) {
-    statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
-    trialTypes <- statsTypes[statsInd]
-    trialStatsList <- statisticsNames[trialTypes]
-    trialStatsVec <- unlist_names(trialStatsList) 
+    statsInd <- which(c(copyTemplate[m,c("acm", "cmc", "pmc", "prc")])==1)
+    trialHOS <- HOStypes[statsInd]
+    trialHOSList <- statisticsNames$HOS[trialHOS]
+    trialStatsVec <- unlist_names(trialHOSList) 
+    modelName <- paste(trialHOS, collapse="_")
+    if (copyTemplate$FAS[m] == 1) {
+      trialStatsVec <- c(statisticsNames$FAS, trialStatsVec)
+      modelName <- paste("FAS_", modelName, sep="")
+    }
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
     copyTemplate$performance[m] <- modelOutcome$accuracy
+    textureResultsDf[[modelName]] <- modelOutcome$predictions
   }
-  resultsDf <- rbind(resultsDf, copyTemplate)
+  modelPerformance <- rbind(modelPerformance, copyTemplate)
+  texturePredictions <- rbind(texturePredictions, textureResultsDf)
+  saveRDS(modelPerformance, savePerformanceResults)
+  saveRDS(texturePredictions, saveTexturePredictions)
 }
 
-saveRDS(resultsDf, saveResults)
 
