@@ -30,7 +30,7 @@ statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 #generate template of design matrix for one repetition
 #############################
 HOStypes <- names(statisticsNames$HOS)
-FAS <- c(0,1)
+FAS <- c(1)
 acm <- c(0,1)
 cmc <- c(0,1)
 pmc <- c(0,1)
@@ -62,7 +62,7 @@ allDataTask <- make_task_BSD(segmentStats)
 #############################
 #Fit the models
 #############################
-for (r in 1:repExp) {
+for (r in 1:dataSplits) {
   # get the segments to test, and split the rest into two training sets
   testSegments <- testSegmentsList[[r]]
   trainSegments <- sampleSegments[which(!sampleSegments %in% testSegments)]
@@ -80,12 +80,21 @@ for (r in 1:repExp) {
   for (m in c(1:length(nrow(copyTemplate)))) {
     statsInd <- which(c(copyTemplate[m,c("acm", "cmc", "pmc", "prc")])==1)
     trialHOS <- HOStypes[statsInd]
-    trialHOSList <- statisticsNames$HOS[trialHOS]
-    trialStatsVec <- unlist_names(trialHOSList) 
-    modelName <- paste(trialHOS, collapse="_")
+    if (length(trialHOS)>0) {
+      trialHOSList <- statisticsNames$HOS[trialHOS]
+      trialStatsVec <- unlist_names(trialHOSList) 
+      modelName <- paste(trialHOS, collapse="_")
+    } else {
+      trialStatsVec <- NULL
+      modelName <- NULL
+    }
     if (copyTemplate$FAS[m] == 1) {
       trialStatsVec <- c(statisticsNames$FAS, trialStatsVec)
-      modelName <- paste("FAS_", modelName, sep="")
+      if (length(trialHOS) > 0) {
+        modelName <- paste("FAS_", modelName, sep="")
+      } else {
+        modelName <- "FAS"
+      }
     }
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
