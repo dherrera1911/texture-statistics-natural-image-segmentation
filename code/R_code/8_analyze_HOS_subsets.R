@@ -8,7 +8,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 savePerformanceResults <- "../../data/BSD_results/8_subset_stats_performance.RDS"
-saveTexturePredictions <- "../../data/BSD_results/8_texture_predictions_subsetsRDS"
+saveTexturePredictions <- "../../data/BSD_results/8_texture_predictions_subsets.RDS"
 dataSplits <- 10
 
 #############################
@@ -109,5 +109,4 @@ for (r in 1:dataSplits) {
   saveRDS(modelPerformance, savePerformanceResults)
   saveRDS(texturePredictions, saveTexturePredictions)
 }
-
 

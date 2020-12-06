@@ -14,7 +14,6 @@ layerUnits <- c(30, 10)
 regularizationWeight <- 0.002
 epochs <- 200
 
-
 #############################
 # load data
 #############################
