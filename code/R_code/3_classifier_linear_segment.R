@@ -61,7 +61,7 @@ for (r in 1:repExp) {
   copyTemplate <- designMatrixTemp %>%
     dplyr::mutate(., rep = r)
 
-  for (m in c(1:length(nrow(copyTemplate)))) {
+  for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
     trialTypes <- statsTypes[statsInd]
     trialStatsList <- statisticsNames[trialTypes]

@@ -77,7 +77,9 @@ for (r in 1:dataSplits) {
 
   textureResultsDf <- dplyr::select(testData, same, designNames)
 
-  for (m in c(1:length(nrow(copyTemplate)))) {
+  print(paste("Split: ", r, "/", dataSplits, sep=""))
+
+  for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("acm", "cmc", "pmc", "prc")])==1)
     trialHOS <- HOStypes[statsInd]
     if (length(trialHOS)>0) {
@@ -96,6 +98,7 @@ for (r in 1:dataSplits) {
         modelName <- "FAS"
       }
     }
+    print(paste("Row: ", m, "/", nrow(copyTemplate), sep=""))
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
     copyTemplate$performance[m] <- modelOutcome$accuracy
