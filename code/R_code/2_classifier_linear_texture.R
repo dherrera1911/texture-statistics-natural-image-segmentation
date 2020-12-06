@@ -8,7 +8,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
 
-saveResults <- "../../data/texture_results/2_texture_results.Rds"
+saveResults <- "../../data/texture_results/2_texture_results.RDS"
 
 nRep <- 5
 repExp <- 20
@@ -68,9 +68,10 @@ for (r in 1:repExp) {
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
     copyTemplate$performance[m] <- modelOutcome$accuracy
+    print(paste("Rep: ", r,"/", repExp, "     Row: ", m, "/",
+                nrow(copyTemplate), sep=""))
   }
   resultsDf <- rbind(resultsDf, copyTemplate)
-}
-
 saveRDS(resultsDf, saveResults)
+}
 

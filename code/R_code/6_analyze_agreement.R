@@ -9,7 +9,7 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveAgreementFile <- "../../data/BSD_stats/6_classification_agreement.Rds"
+saveAgreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
 
 dataSplits <- 10
 
