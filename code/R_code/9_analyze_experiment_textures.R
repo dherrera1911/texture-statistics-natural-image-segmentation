@@ -50,6 +50,7 @@ expPairsStats <- group_by(expTextStats, texture) %>%
   dplyr::mutate(., same=0) %>%
   ungroup(.)
 
+resultsDf <- NULL
 for (l in c(1:repRuns)) {
   tempDf <- data.frame(texture=as.character(expPairsStats$texture),
                        rep=l, same_FAS=0, same_HOS=0, same_FASHOS=0,
@@ -71,7 +72,7 @@ for (l in c(1:repRuns)) {
     tempDf[[predictionCol]] <- as.integer(expSegment$predictions)
   }
   print(paste("Progress:  ", l, "/", repRuns, sep=""))
-  resultsDf <- rbind(tempDf)
+  resultsDf <- rbind(resultsDf, tempDf)
   saveRDS(resultsDf, saveSegmentationPredictions)
 }
 
