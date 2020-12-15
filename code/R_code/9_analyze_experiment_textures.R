@@ -109,7 +109,7 @@ for (l in c(1:repRuns)) {
   tempDf <- data.frame(texture=expPairsStats$texture,
                        betterHOSActivation=as.numeric(expPredHOS$modelResponses),
                        betterHOS=as.integer(expPredHOS$predictions),
-                       betterFASHOSActivation=expPredFASHOS$modelResponses,
+                       betterFASHOSActivation=as.numeric(expPredFASHOS$modelResponses),
                        betterFASHOS=as.integer(expPredFASHOS$predictions),
                        rep=l)
   predictBetterStats <- rbind(predictBetterStats, tempDf)
