@@ -47,6 +47,7 @@ statsPCA <- function(trainStats, testStats, varianceRetained = 0.95) {
   return(output)
 }
 
+
 # do PCA sepparately on the different subgroups of stats
 subset_statsPCA <- function(trainStats, testStats, subsetList,
                             varianceRetained = 0.95) {
@@ -222,16 +223,17 @@ compute_angles <- function(inputData){
 
 # Generate a list with the prepared data to train and test a model
 prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
-                             balanceWeights = TRUE, subsetsPCA=NA) {
+                             balanceWeights = TRUE, subsetsPCA=NA,
+                             labelColumn="same") {
   # calculate weights to even out classes
   weights <- rep(1, nrow(trainData))
   if (balanceWeights) {
-    ratioSame <- sum(trainData$same) / sum(1-trainData$same)
-    weights[trainData$same == 1] <- (1/ratioSame)
+    ratioSame <- sum(trainData[[labelColumn]]) / sum(1-trainData[[labelColumn]])
+    weights[trainData[[labelColumn]] == 1] <- (1/ratioSame)
   }
   # extract labels
-  trainLabel <- trainData$same
-  testLabel <- testData$same
+  trainLabel <- trainData[[labelColumn]]
+  testLabel <- testData[[labelColumn]]
   # extract statistics
   if (is.na(statsToUse[1])) {
     allStatsNames <- get_statistics_names(names(trainData))
@@ -264,10 +266,14 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
 
 # Train a ridge regression model on given train and test data.
 train_test_ridge <- function(trainData, testData, statsToUse=NA,
-                             balanceWeights = TRUE, subsetsPCA=NA) {
-  preparedData <- prepare_data_fit_test(trainData, testData,
-                                        statsToUse, balanceWeights,
-                                        subsetsPCA)
+                             balanceWeights = TRUE, subsetsPCA=NA,
+                             labelColumn="same") {
+  preparedData <- prepare_data_fit_test(trainData=trainData,
+                                        testData=testData,
+                                        statsToUse=statsToUse,
+                                        balanceWeights=balanceWeights,
+                                        subsetsPCA=subsetsPCA,
+                                        labelColumn=labelColumn)
   # fit the model
   modelFit <- cv.glmnet(x = as.matrix(preparedData$trainStats),
                        y = preparedData$trainLabel,
@@ -278,16 +284,21 @@ train_test_ridge <- function(trainData, testData, statsToUse=NA,
                        type.measure="class")
   modelPredictions <- predict(modelFit, as.matrix(preparedData$testStats),
                                  type = "class")
+  modelResponses <- predict(modelFit, as.matrix(preparedData$testStats),
+                                 type = "link")
   correctPredictions <- as.integer(modelPredictions == preparedData$testLabel)
   predictionOutcome <- mean(correctPredictions)
+  referenceLabels <- factor(preparedData$testLabel, levels=c("0","1"))
   confusionMatrix <- caret::confusionMatrix(factor(modelPredictions),
-                                                     factor(preparedData$testLabel))
+                                                     referenceLabels)
   modelOutput <- list(predictions = modelPredictions,
                       accuracy = predictionOutcome,
                       correctPredictions = correctPredictions,
-                      confusionMatrix = confusionMatrix)
+                      confusionMatrix = confusionMatrix,
+                      modelResponses = modelResponses)
   return(modelOutput)
 }
+
 
 # make dnn model
 make_dnn_model <- function(layerUnits, inputShape, regularizationWeight) {

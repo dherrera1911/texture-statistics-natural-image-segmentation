@@ -54,8 +54,6 @@ remove_constant_stats <- function(rawData) {
   outputDf <- cbind(designDf, statsDf)
   return(outputDf)
 }
-   
-
 
 
 # permute vector not allowing any value to remain in same place
