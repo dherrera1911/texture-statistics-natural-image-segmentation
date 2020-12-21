@@ -7,32 +7,32 @@ set.seed(2691)
 #library(Hmisc)
 
 plottingDir <- "../../data/plots/"
-
 modelOrder <- c("Pix", "FA", "HOS", "FA_HOS")
 
 ##################################
-##### Plot N of parameters ########
 ##################################
+##### 1 Plot N of parameters #####
+##################################
+##################################
+
 statsFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
 statsDf <- read.csv(statsFile, sep = ",") %>%
   as_tibble(.) %>%
-  dplyr::select(., -texture, -quadrant)
+  remove_constant_stats(.)
 
+# get the names of the different stats to use
 parNames <- names(statsDf)
-noVarInds <- which(colVars(as.matrix(statsDf)) == 0)
-noVarNames <- parNames[noVarInds]
-parNames <- parNames[-noVarInds]
-indPix <- c(grep("pix", parNames), grep("^LP", parNames))
-indFAS <- c(grep("mm", parNames), grep("acr", parNames))
-indHOS <- c(grep("acm", parNames), grep("cmc", parNames),
-             grep("pmc", parNames), grep("prc", parNames))
-nPix <- length(indPix)
-nFAS <- length(indFAS)
-nHOS <- length(indHOS)
+statisticsNames <- get_statistics_names(parNames)
+designNames <- statisticsNames$design
+
+nPix <- length(statisticsNames$pixel)
+nFAS <- length(statisticsNames$FAS)
+nHOS <- length(statisticsNames$HOS)
 
 statFactor <- factor(c("Pix", "FAS", "HOS"), levels = c("Pix", "FAS", "HOS"))
 nParDf <- data.frame(Statistics = statFactor,
                      nPar = c(nPix, nFAS, nHOS))
+
 parPlot <- ggplot(data = nParDf, aes(x = Statistics, y = nPar, fill = Statistics)) +
   geom_bar(stat="identity", width = 0.5) +
   scale_fill_manual(name = "Statistic groups",
@@ -50,50 +50,78 @@ parPlot <- ggplot(data = nParDf, aes(x = Statistics, y = nPar, fill = Statistics
 ggsave(paste(plottingDir, "nParameters.png", sep=""), parPlot,
        width = 10, height = 10, units = "cm") 
 
+#############################
+#############################
+##### 2 Texture results #####
+#############################
+#############################
 
-#############################
-##### Texture results ########
-#############################
+assign_stat_name <- function(pixel, FAS, HOS) {
+  name <- NULL
+  for (i in c(1:length(pixel))) {
+    pixel_i <- pixel[i]
+    FAS_i <- FAS[i]
+    HOS_i <- HOS[i]
+    if (pixel_i & !FAS_i & !HOS_i) {
+      name[i] <- "Pix"
+    } else if (pixel_i & FAS_i & !HOS_i) {
+      name[i] <- "Pix_FAS"
+    } else if (pixel_i & !FAS_i & HOS_i) {
+      name[i] <- "Pix_HOS"
+    } else if (pixel_i & FAS_i & HOS_i) {
+      name[i] <- "Pix_FAS_HOS"
+    } else if (!pixel_i & FAS_i & HOS_i) {
+      name[i] <- "FAS_HOS"
+    } else if (!pixel_i & FAS_i & !HOS_i) {
+      name[i] <- "FAS"
+    } else if (!pixel_i & !FAS_i & HOS_i) {
+      name[i] <- "HOS"
+    }
+  }
+  return(name)
+}
+
+assign_stat_name_plot <- function(pixel, FAS, HOS) {
+  name <- NULL
+  for (i in c(1:length(pixel))) {
+    pixel_i <- pixel[i]
+    FAS_i <- FAS[i]
+    HOS_i <- HOS[i]
+    if (pixel_i & !FAS_i & !HOS_i) {
+      name[i] <- "Pix"
+    } else if (pixel_i & FAS_i & !HOS_i) {
+      name[i] <- "Pix-Spectral"
+    } else if (pixel_i & !FAS_i & HOS_i) {
+      name[i] <- "Pix-HOS"
+    } else if (pixel_i & FAS_i & HOS_i) {
+      name[i] <- "Pix-Spectral-HOS"
+    } else if (!pixel_i & FAS_i & HOS_i) {
+      name[i] <- "Spectral-HOS"
+    } else if (!pixel_i & FAS_i & !HOS_i) {
+      name[i] <- "Spectral"
+    } else if (!pixel_i & !FAS_i & HOS_i) {
+      name[i] <- "HOS"
+    }
+  }
+  return(name)
+}
+
 
 textureResultsFile <- "../../data/texture_results/texture_results.Rds"
-
 textureRes <- readRDS(textureResultsFile) %>%
-  pivot_longer(., c("Pix", "FA", "HOS", "FA_HOS"), names_to = "Model_params",
-               values_to = "Performance") %>%
-  dplyr::filter(., !is.na(Performance))
+  dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
+                error=1-performance)
+textureRes$statsName <- factor(textureRes$statsName,
+                               levels=c("Pix", "Pix-Spectral",
+                                        "Pix-HOS", "Pix-Spectral-HOS",
+                                        "Spectral", "HOS", "Spectral-HOS"))
 
-# add clearer the stats
-colFAS <- rep(0, nrow(textureRes))
-colFAS[grep("FA", textureRes$Model_params)] <- 1
-colHOS <- rep(0, nrow(textureRes))
-colHOS[grep("*HOS", textureRes$Model_params)] <- 1
-
-textureRes$FAS <- colFAS
-textureRes$HOS <- colHOS
-
-# tidying
-pixRes <- dplyr::filter(textureRes, usePix == 1) %>%
-  dplyr::mutate(., Model_params =
-                c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS")[usePix + FAS + 2*HOS])
-
-modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
-
-textureRes <- dplyr::filter(textureRes, usePix == 0) %>%
-  rbind(., pixRes) %>%
-  dplyr::mutate(., Error = 1 - Performance)
-
-textureRes$Model_params <- factor(textureRes$Model_params, levels = modelOrder)
-
-# summarize performance
-texturePerformance <- textureRes %>%
-  dplyr::select(., Model_params, Error) %>%
-  group_by(., Model_params) %>%
-  dplyr::summarize(., mean_error = mean(Error), error_sd = sd(Error))
-
+texturePerformanceSummary <- group_by(textureRes, statsName, pixel) %>%
+  summarize(., meanError=mean(error), sdError=sd(error))
 
 #### plot results when using pixel data ####
-texturePlot <- dplyr::filter(textureRes, usePix == 1) %>%
-  ggplot(aes(x = Model_params, y = Error  * 100, color = Model_params)) +
+texturePlot <- dplyr::filter(textureRes, pixel==1) %>%
+  ggplot(aes(x=statsName, y=error*100, color=statsName)) +
   geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
 #  stat_summary(fun = mean_cl_normal, geom = "errorbar") +
   #geom_boxplot() +
@@ -116,107 +144,90 @@ texturePlotName <- paste(plottingDir, "texturePlot.png", sep="")
 ggsave(texturePlotName, texturePlot, width = 10, height = 7, units = "cm") 
 
 
+##########################
+##### 3 Texture DNN ######
+##########################
+
+#textureResultsDNNFile <- "../../data/texture_results/texture_dnn.Rds"
+#
+#textureDNNRes <- readRDS(textureResultsDNNFile) %>%
+#  pivot_longer(., c("Pix", "FA", "HOS", "FA_HOS"), names_to = "Model_params",
+#               values_to = "Performance") %>%
+#  dplyr::filter(., !is.na(Performance))
+#
+## add clearer the stats
+#colFAS <- rep(0, nrow(textureDNNRes))
+#colFAS[grep("FA", textureDNNRes$Model_params)] <- 1
+#colHOS <- rep(0, nrow(textureDNNRes))
+#colHOS[grep("*HOS", textureDNNRes$Model_params)] <- 1
+#
+#textureDNNRes$FAS <- colFAS
+#textureDNNRes$HOS <- colHOS
+#
+#pixRes <- dplyr::filter(textureDNNRes, usePix == 1) %>%
+#  dplyr::mutate(., Model_params =
+#                c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS")[usePix + FAS + 2*HOS])
+#
+#modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
+#
+#textureDNNRes <- dplyr::filter(textureDNNRes, usePix == 0) %>%
+#  rbind(., pixRes) %>%
+#  dplyr::mutate(., Error = 1 - Performance)
+#
+#textureDNNRes$Model_params <- factor(textureDNNRes$Model_params, levels = modelOrder)
+#
+#texturePerformanceDNN <- textureDNNRes %>%
+#  dplyr::select(., Model_params, Error) %>%
+#  group_by(., Model_params) %>%
+#  dplyr::summarize(., mean_error = mean(Error), error_sd = sd(Error))
+#
+#
+##### plot results when using pixel data ####
+#textureDNNPlot <- dplyr::filter(textureDNNRes, usePix == 1) %>%
+#  ggplot(aes(x = Model_params, y = Error  * 100, color = Model_params)) +
+#  geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
+#  scale_color_manual(name = "Statistic groups",
+#                     labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS"),
+#                       values = c("#000000", "#2691d4", "#b400e5", "#ba2229"),
+#                     guide = "none") +
+#  stat_summary(fun = "mean") +
+#  ylim(0, 30) +
+#  theme_bw() +
+#  theme(panel.border = element_blank(),
+#        axis.line.x = element_line(size=0.5, linetype="solid"),
+#        axis.line.y = element_line(size=0.5, linetype="solid")) +
+#  ylab("Error rate (%)") +
+#  scale_x_discrete(name = "Parameters",
+#                   labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS")) +
+#  NULL
+#
+#textureDNNPlotName <- paste(plottingDir, "textureDNNPlot.png", sep="")
+#ggsave(textureDNNPlotName, textureDNNPlot, width = 10, height = 7, units = "cm") 
+#
+#
+
 #############################
-##### Texture DNN ########
+#############################
+##### 4 BSD results #########
+#############################
 #############################
 
-textureResultsDNNFile <- "../../data/texture_results/texture_dnn.Rds"
-
-textureDNNRes <- readRDS(textureResultsDNNFile) %>%
-  pivot_longer(., c("Pix", "FA", "HOS", "FA_HOS"), names_to = "Model_params",
-               values_to = "Performance") %>%
-  dplyr::filter(., !is.na(Performance))
-
-# add clearer the stats
-colFAS <- rep(0, nrow(textureDNNRes))
-colFAS[grep("FA", textureDNNRes$Model_params)] <- 1
-colHOS <- rep(0, nrow(textureDNNRes))
-colHOS[grep("*HOS", textureDNNRes$Model_params)] <- 1
-
-textureDNNRes$FAS <- colFAS
-textureDNNRes$HOS <- colHOS
-
-pixRes <- dplyr::filter(textureDNNRes, usePix == 1) %>%
-  dplyr::mutate(., Model_params =
-                c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS")[usePix + FAS + 2*HOS])
-
-modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
-
-textureDNNRes <- dplyr::filter(textureDNNRes, usePix == 0) %>%
-  rbind(., pixRes) %>%
-  dplyr::mutate(., Error = 1 - Performance)
-
-textureDNNRes$Model_params <- factor(textureDNNRes$Model_params, levels = modelOrder)
-
-texturePerformanceDNN <- textureDNNRes %>%
-  dplyr::select(., Model_params, Error) %>%
-  group_by(., Model_params) %>%
-  dplyr::summarize(., mean_error = mean(Error), error_sd = sd(Error))
-
-
-#### plot results when using pixel data ####
-textureDNNPlot <- dplyr::filter(textureDNNRes, usePix == 1) %>%
-  ggplot(aes(x = Model_params, y = Error  * 100, color = Model_params)) +
-  geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
-  scale_color_manual(name = "Statistic groups",
-                     labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS"),
-                       values = c("#000000", "#2691d4", "#b400e5", "#ba2229"),
-                     guide = "none") +
-  stat_summary(fun = "mean") +
-  ylim(0, 30) +
-  theme_bw() +
-  theme(panel.border = element_blank(),
-        axis.line.x = element_line(size=0.5, linetype="solid"),
-        axis.line.y = element_line(size=0.5, linetype="solid")) +
-  ylab("Error rate (%)") +
-  scale_x_discrete(name = "Parameters",
-                   labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS")) +
-  NULL
-
-textureDNNPlotName <- paste(plottingDir, "textureDNNPlot.png", sep="")
-ggsave(textureDNNPlotName, textureDNNPlot, width = 10, height = 7, units = "cm") 
-
-
-#############################
-##### BSD results ########
-#############################
-
-bsdFile <- "../../data/BSD_results/BSD_results.Rds"
-modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
+bsdFile <- "../../data/BSD_results/3_BSD_results.RDS"
 bsdRes <- readRDS(bsdFile) %>%
-  pivot_longer(., c("Pix", "FA", "HOS", "FA_HOS"), names_to = "Model_params",
-               values_to = "Performance") %>%
-  dplyr::filter(., !is.na(Performance))
+  dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
+                error=1-performance)
+bsdRes$statsName <- factor(bsdRes$statsName,
+                               levels=c("Pix", "Pix-Spectral",
+                                        "Pix-HOS", "Pix-Spectral-HOS",
+                                        "Spectral", "HOS", "Spectral-HOS"))
 
-colFAS <- rep(0, nrow(bsdRes))
-colFAS[grep("FA", bsdRes$Model_params)] <- 1
-colHOS <- rep(0, nrow(bsdRes))
-colHOS[grep("*HOS", bsdRes$Model_params)] <- 1
-
-bsdRes$FAS <- colFAS
-bsdRes$HOS <- colHOS
-
-pixRes <- dplyr::filter(bsdRes, usePix == 1) %>%
-  dplyr::mutate(., Model_params =
-                c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS")[usePix + FAS + HOS*2])
-
-bsdRes <- dplyr::filter(bsdRes, usePix == 0) %>%
-  rbind(., pixRes) %>%
-  dplyr::mutate(., Error = 1 - Performance)
-
-# order the factors
-bsdRes$Model_params <- factor(bsdRes$Model_params, levels = modelOrder)
-
-bsdPerformance <- bsdRes %>%
-  dplyr::select(., Model_params, Error) %>%
-  group_by(., Model_params) %>%
-  dplyr::summarize(., mean_error = mean(Error), error_sd = sd(Error))
+bsdPerformanceSummary <- group_by(bsdRes, statsName, pixel) %>%
+  summarize(., meanError=mean(error), sdError=sd(error))
 
 #### plot results when using pixel data ####
-bsdPlot <- bsdRes %>%
-  dplyr::filter(., usePix == 1) %>%
+bsdPlot <- dplyr::filter(bsdRes, pixel==1) %>%
   droplevels(.) %>%
-  ggplot(aes(x = Model_params, y = Error  * 100, color = Model_params)) +
+  ggplot(aes(x = statsName, y = error  * 100, color = statsName)) +
   geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
   scale_color_manual(name = "Statistic groups",
                      labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS"),
@@ -225,7 +236,7 @@ bsdPlot <- bsdRes %>%
   stat_summary(fun = "mean") +
   ylim(0, 30) +
   theme_bw() +
-  ylab("Error rate (%)") +
+  ylab("error rate (%)") +
   theme(panel.border = element_blank(),
         axis.line.x = element_line(size=0.5, linetype="solid"),
         axis.line.y = element_line(size=0.5, linetype="solid")) +
@@ -235,49 +246,66 @@ bsdPlot <- bsdRes %>%
 BSDPlotName <- paste(plottingDir, "BSDPlot.png", sep="")
 ggsave(BSDPlotName, bsdPlot, width = 10, height = 7, units = "cm") 
 
+#########################
+#########################
+##### 5 BSD DNN #########
+#########################
+#########################
 
-#############################
-##### BSD DNN ########
-#############################
-
-bsdDNNFile <- "../../data/BSD_results/BSD_dnn.Rds"
-modelOrder <- c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS", "FA", "HOS", "FA_HOS")
+bsdDNNFile <- "../../data/BSD_results/4_BSD_dnn.Rds"
 bsdDNNRes <- readRDS(bsdDNNFile) %>%
-  pivot_longer(., c("Pix", "FA", "HOS", "FA_HOS"), names_to = "Model_params",
-               values_to = "Performance") %>%
-  dplyr::filter(., !(usePix == 0 & Model_params == "Pix")) %>%
-  dplyr::mutate(., Error = 1 - Performance)
+  dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
+                error=1-performance)
+bsdDNNRes$statsName <- factor(bsdDNNRes$statsName,
+                               levels=c("Pix", "Pix-Spectral",
+                                        "Pix-HOS", "Pix-Spectral-HOS",
+                                        "Spectral", "HOS", "Spectral-HOS"))
 
-colFAS <- rep(0, nrow(bsdDNNRes))
-colFAS[grep("FA", bsdDNNRes$Model_params)] <- 1
-colHOS <- rep(0, nrow(bsdDNNRes))
-colHOS[grep("*HOS", bsdDNNRes$Model_params)] <- 1
+bsdDNNPerformanceSummary <- group_by(bsdDNNRes, statsName, pixel,
+                                     architecture, regularization, epochs) %>%
+  summarize(., meanError=mean(error), sdError=sd(error),
+            minrep=max(rep))
 
-bsdDNNRes$FAS <- colFAS
-bsdDNNRes$HOS <- colHOS
+# compare performance of NN to linear model
+linearSpectralHOS <- dplyr::filter(bsdPerformanceSummary,
+                                   statsName=="Pix-Spectral-HOS")[["meanError"]]
 
-pixRes <- dplyr::filter(bsdDNNRes, usePix == 1) %>%
-  dplyr::mutate(., Model_params =
-                c("Pix", "Pix_FAS", "Pix_HOS", "Pix_FAS_HOS")[usePix + FAS + HOS*2])
+performanceDiff <- dplyr::filter(bsdDNNPerformanceSummary,
+                                 statsName=="Pix-Spectral-HOS") %>%
+  dplyr::mutate(., errorDiff=linearSpectralHOS-meanError)
 
-bsdDNNRes <- dplyr::filter(bsdDNNRes, usePix == 0) %>%
-  rbind(., pixRes)
+#### compare NN regimes
+allEpochs <- unique(bsdDNNRes$epochs)
+bsdDNNPlots <- list()
+for (ep in c(1:length(allEpochs))) {
+  bsdDNNPlots[[ep]] <- dplyr::filter(bsdDNNRes, pixel==1,
+                                     epochs==allEpochs[ep]) %>%
+    droplevels(.) %>%
+    ggplot(aes(x = statsName, y = error  * 100, color = statsName)) +
+    geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
+    scale_color_manual(name = "Statistic groups",
+                       labels = c("Pix", "Pix-Spectral", "Pix-HOS",
+                                  "Pix-Spectral-HOS"),
+                         values = c("#000000", "#2691d4", "#b400e5", "#ba2229"),
+                       guide = "none") +
+    stat_summary(fun = "mean") +
+    ylim(0, 30) +
+    theme_bw() +
+    facet_wrap(facets=c("architecture", "regularization")) +
+    theme(panel.border = element_blank(),
+          axis.line.x = element_line(size=0.5, linetype="solid"),
+          axis.line.y = element_line(size=0.5, linetype="solid")) +
+    ylab("error rate (%)") +
+    scale_x_discrete(name = "Parameters",
+                     labels = c("Pix", "Pix-Spectral", "Pix-HOS",
+                                "Pix-Spectral-HOS"))
+}
 
-# order the factors
-bsdDNNRes$Model_params <- factor(bsdDNNRes$Model_params, levels = modelOrder)
 
-bsdDNNPerformance <- bsdDNNRes %>%
- # dplyr::filter(., usePix == 1) %>%
-#  droplevels(.) %>%
-  dplyr::select(., Model_params, Error) %>%
-  group_by(., Model_params) %>%
-  dplyr::summarize(., mean_error = mean(Error), error_sd = sd(Error))
-
-
-#### plot results ####
-bsdDNNPlot <- dplyr::filter(bsdDNNRes, usePix == 1) %>%
+#### plot main results ####
+bsdDNNPlot <- dplyr::filter(bsdDNNRes, pixel==1) %>%
   droplevels(.) %>%
-  ggplot(aes(x = Model_params, y = Error  * 100, color = Model_params)) +
+  ggplot(aes(x = statsName, y = error  * 100, color = statsName)) +
   geom_jitter(width = 0.2, height = 0, alpha = 0.5, shape = 1) +
   scale_color_manual(name = "Statistic groups",
                      labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS"),
@@ -289,11 +317,34 @@ bsdDNNPlot <- dplyr::filter(bsdDNNRes, usePix == 1) %>%
   theme(panel.border = element_blank(),
         axis.line.x = element_line(size=0.5, linetype="solid"),
         axis.line.y = element_line(size=0.5, linetype="solid")) +
-  ylab("Error rate (%)") +
+  ylab("error rate (%)") +
   scale_x_discrete(name = "Parameters",
                    labels = c("Pix", "Pix-Spectral", "Pix-HOS", "Pix-Spectral-HOS"))
 
 
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot.png", sep="")
 ggsave(bsdDNNPlotName, bsdDNNPlot, width = 10, height = 7, units = "cm") 
+
+
+##################################
+##### 6 analyze agreement #########
+##################################
+agreementFile <- "../../data/BSD_results/6_classification_agreement.csv"
+agreementDf <- read.csv(agreementFile, stringsAsFactors=FALSE)
+
+agreementSummary <- summarize(agreementDf, betterHOS=mean(betterHOS),
+                               betterFASHOS=mean(betterFASHOS))
+
+
+##################################
+##### 7 predict agreement ########
+##################################
+agreementFile <- "../../data/BSD_results/8_subset_stats_performance.RDS"
+agreementDf <- readRDS(agreementFile)
+
+agreementSummary <- summarize(agreementDf, betterHOS=mean(betterHOS),
+                               betterFASHOS=mean(betterFASHOS))
+
+
+
 

@@ -42,7 +42,7 @@ betterHOSTable <- matrix(0,2,2)
 betterFASHOSTable <- matrix(0,2,2)
 texturesOutcome <- NULL
 
-for (r in c(1:testSetSplits)) {
+for (r in c(1:length(testSegmentsList))) {
   testSegments <- testSegmentsList[[r]]
   trainSegments <- sampleSegments[which(!sampleSegments %in% testSegments)]
 
