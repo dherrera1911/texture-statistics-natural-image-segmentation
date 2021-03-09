@@ -93,7 +93,6 @@ function cutMask = split_mask(inputMask)
   cutMask{2}(:, 1:(xHalf-1)) = 0;
 end
 
-
 %%%%%%%%%%%% Compute the stats %%%%%%%%%%%%%%%%
 imageFiles = read_unhidden(imageDir);
 segmentFiles = read_unhidden(segmentsDir);
