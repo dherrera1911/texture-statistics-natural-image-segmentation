@@ -30,7 +30,7 @@ statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 #generate template of design matrix for one repetition
 #############################
 HOStypes <- names(statisticsNames$HOS)
-FAS <- c(1)
+FAS <- c(0)
 acm <- c(0,1)
 cmc <- c(0,1)
 pmc <- c(0,1)
@@ -39,7 +39,8 @@ prc <- c(0,1)
 designMatrixTemp <- expand.grid(FAS, acm, cmc, pmc, prc) %>%
   dplyr::mutate(., rep=NA, performance=NA) %>%
   dplyr::rename(., FAS=Var1, acm=Var2, cmc=Var3,
-                pmc=Var4, prc=Var5)
+                pmc=Var4, prc=Var5) %>%
+  dplyr::filter(., (FAS+acm+cmc+pmc+prc)!=0)
 
 modelPerformance <- NULL
 texturePredictions <- NULL

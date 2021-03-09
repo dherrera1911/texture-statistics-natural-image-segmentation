@@ -38,8 +38,8 @@ splitSize <- ceiling(nSegments/dataSplits)
 testSegmentsList <- split(sampleSegments,
                           ceiling(seq_along(sampleSegments)/splitSize))
 
-betterHOSTable <- matrix(0,2,2)
-betterFASHOSTable <- matrix(0,2,2)
+confusionMatHOS <- matrix(0,2,2)
+confusionMatFASHOS <- matrix(0,2,2)
 texturesOutcome <- NULL
 
 for (r in c(1:length(testSegmentsList))) {
@@ -64,24 +64,26 @@ for (r in c(1:length(testSegmentsList))) {
                                   labelColumn="betterFASHOS")
 
   # add results to global confusion matrix
-  betterHOSTable <- betterHOSTable + predictBetterHOS$confusionMatrix$table
-  betterFASHOSTable <- betterFASHOSTable + predictBetterFASHOS$confusionMatrix$table
+  confusionMatHOS <- confusionMatHOS + predictBetterHOS$confusionMatrix$table
+  confusionMatFASHOS <- confusionMatFASHOS + predictBetterFASHOS$confusionMatrix$table
 
   # save in a Df the status of each pair (false positive, false negative, etc)
-  confusionHOS <- confusion_indices(predictBetterHOS$predictions,
+  predictOutcomeHOS <- predictOutcome_indices(predictBetterHOS$predictions,
                                     as.character(testData$betterHOS))
-  confusionFASHOS <- confusion_indices(predictBetterFASHOS$predictions,
+  predictOutcomeFASHOS <- predictOutcome_indices(predictBetterFASHOS$predictions,
                                     as.character(testData$betterFASHOS))
 
   shorterTest <- dplyr::select(testData, designNames) %>%
-    dplyr::mutate(., predictionHOS=confusionHOS,
-                  predictionFASHOS=confusionFASHOS)
+    dplyr::mutate(., predictionHOS=predictOutcomeHOS,
+                  predictionFASHOS=predictOutcomeFASHOS)
   texturesOutcome <- rbind(texturesOutcome, shorterTest)   
+
+  
 }
 
-confusionMatrices <- list(confusionHOS=confusionHOS,
-                          confusionFASHOS=confusionFASHOS)
+confusionMatrices <- list(confusionHOS=confusionMatHOS,
+                          confusionFASHOS=confusionMatFASHOS)
 
 saveRDS(confusionMatrices, saveConfusionMat)
-saveRDS(textureOutcome, saveSegmentOutcome)
+saveRDS(texturesOutcome, saveSegmentOutcome)
 
