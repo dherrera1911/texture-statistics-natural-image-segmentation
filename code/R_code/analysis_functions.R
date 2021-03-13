@@ -6,7 +6,7 @@
 
 library(glmnet)
 library(dplyr)
-library(keras)
+library(kerasR)
 library(caret)
 source("utility_functions.R")
 
@@ -50,11 +50,11 @@ statsPCA <- function(trainStats, testStats, varianceRetained = 0.95) {
 
 # do PCA sepparately on the different subgroups of stats
 subset_statsPCA <- function(trainStats, testStats, subsetList,
-                            varianceRetained = 0.95) {
-  trainPCall <- data.frame(row.names = c(1:nrow(trainStats)))
-  testPCall <- data.frame(row.names = c(1:nrow(testStats)))
+                            varianceRetained=0.95) {
+  trainPCall <- data.frame(row.names=c(1:nrow(trainStats)))
+  testPCall <- data.frame(row.names=c(1:nrow(testStats)))
   if (!is.list(subsetList)) {
-    subsetList <- list(all = subsetList)
+    subsetList <- list(all=subsetList)
   }
   subsetNames <- names(subsetList) 
   for (t in c(1:length(subsetList))) {
@@ -244,8 +244,7 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
   trainStats <- dplyr::select(trainData, all_of(statsToUse))
   testStats <- dplyr::select(testData, all_of(statsToUse))
   # Normalize the statistics
-  normalizedStats <- normalize_data(trainStats = trainStats,
-                                          testStats = testStats)
+  normalizedStats <- normalize_data(trainStats=trainStats, testStats=testStats)
   trainStats <- as.data.frame(normalizedStats$train)
   testStats <- as.data.frame(normalizedStats$test)
   # If required, do PCA
@@ -255,11 +254,11 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
     testStats <- pcaStats$testPCA
   }
   # fit the model
-  preparedData <- list(trainStats = trainStats,
-                       testStats = testStats,
-                       trainLabel = trainLabel,
-                       testLabel = testLabel,
-                       weights = weights)
+  preparedData <- list(trainStats=trainStats,
+                       testStats=testStats,
+                       trainLabel=trainLabel,
+                       testLabel=testLabel,
+                       weights=weights)
   return(preparedData)
 }
 
@@ -301,23 +300,25 @@ train_test_ridge <- function(trainData, testData, statsToUse=NA,
 
 
 # make dnn model
+# tutorial: https://cran.r-project.org/web/packages/kerasR/vignettes/introduction.html
 make_dnn_model <- function(layerUnits, inputShape, regularizationWeight) {
   mod <- kerasR::Sequential()
-  mod$add(kerasR::Dense(units = layerUnits[1], input_shape = inputShape))
+  # only the first layer requires input_shape
+  mod$add(kerasR::Dense(units=layerUnits[1], input_shape=inputShape))
   mod$add(kerasR::ActivityRegularization(l1=regularizationWeight))
   mod$add(kerasR::Activation("relu"))
   layerUnits <- layerUnits[-1]
-  if (length(layerUnits) == 0) {
+  if (length(layerUnits)!=0) {
     for (u in layerUnits) {
-      mod$add(kerasR::Dense(units = u))
+      mod$add(kerasR::Dense(units=u))
       mod$add(kerasR::ActivityRegularization(l1=regularizationWeight))
       mod$add(kerasR::Activation("relu"))
     }
   }
-  mod$add(kerasR::Dense(units = 1))
+  mod$add(kerasR::Dense(units=1))
   mod$add(kerasR::Activation("sigmoid"))
-  kerasR::keras_compile(mod, loss = "binary_crossentropy",
-                        metrics = "binary_accuracy", optimizer = kerasR::Adam())
+  kerasR::keras_compile(mod, loss="binary_crossentropy",
+                        metrics="binary_accuracy", optimizer=kerasR::Adam())
   return(mod)
 }
 
@@ -325,7 +326,7 @@ make_dnn_model <- function(layerUnits, inputShape, regularizationWeight) {
 # Train a ridge regression model on given train and test
 # data.
 train_test_dnn <- function(trainData, testData, statsToUse=NA,
-                           balanceWeights = TRUE, subsetsPCA=NA,
+                           balanceWeights=TRUE, subsetsPCA=NA,
                            layerUnits=c(30,10), regularizationWeight=0.002,
                            epochs=200) {
   preparedData <- prepare_data_fit_test(trainData, testData,

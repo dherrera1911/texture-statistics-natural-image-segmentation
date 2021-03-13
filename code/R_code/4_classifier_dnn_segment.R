@@ -25,7 +25,6 @@ statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 
-
 #############################
 #generate template of design matrix for one repetition
 #############################
@@ -34,8 +33,8 @@ FAS <- c(0,1)
 HOS <- c(0,1)
 statsTypes <- c("pixel", "FAS", "HOS")
 designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
-  dplyr::mutate(., rep = NA, performance = NA) %>%
-  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
+  dplyr::mutate(., rep=NA, performance=NA) %>%
+  dplyr::rename(., pixel=Var1, FAS=Var2, HOS=Var3) %>%
   dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
 resultsDf <- NULL
 
