@@ -39,7 +39,7 @@ designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
   dplyr::rename(., pixel=Var1, FAS=Var2, HOS=Var3) %>%
   dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
 
-if (file.exist(saveResults)) {
+if (file.exists(saveResults)) {
   resultsDf <- readRDS(saveResults)
 } else {
   resultsDf <- NULL

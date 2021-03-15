@@ -7,7 +7,8 @@ source("./analysis_functions.R")
 set.seed(2691)
 
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
-#dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
+#dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
+#saveAgreementFile <- "../../data/BSD_results/6_classification_agreement_texture.Rds"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveAgreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
 
