@@ -13,6 +13,7 @@ nRep <- 5
 layerUnits <- c(30, 10)
 regularizationWeight <- 0.002
 epochs <- 200
+subsetPCA <- TRUE
 
 #############################
 # load data
@@ -77,10 +78,16 @@ for (r in 1:repExp) {
     trialTypes <- statsTypes[statsInd]
     trialStatsList <- statisticsNames[trialTypes]
     trialStatsVec <- unlist_names(trialStatsList) 
+    if (is.na(subsetPCA)) {
+      pcaStatsSubsets <- NA
+    } else if (subsetPCA) {
+      pcaStatsSubsets <- statisticsNamesFiner
+    } else {
+      pcaStatsSubsets <- list(all=trialStatsVec)
+    }
     modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE,
-                     #subsetsPCA=list(all=trialStatsVec),
-                     subsetsPCA=statisticsNamesFiner,
+                     subsetsPCA=pcaStatsSubsets,
                      layerUnits=layerUnits,
                      regularizationWeight=regularizationWeight,
                      epochs=epochs)

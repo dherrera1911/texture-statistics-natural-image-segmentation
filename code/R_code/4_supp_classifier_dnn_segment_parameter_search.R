@@ -13,6 +13,7 @@ layerUnits <- list(c(30), c(30, 10))
 #layerUnits <- list(c(50, 20, 5), c(10, 2))
 regularizationWeight <- c(0.001)
 epochs <- c(150)
+subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -76,10 +77,14 @@ for (r in 1:repExp) {
           trialTypes <- statsTypes[statsInd]
           trialStatsList <- statisticsNames[trialTypes]
           trialStatsVec <- unlist_names(trialStatsList) 
+          if (subsetPCA) {
+            pcaStatsSubsets <- statisticsNamesFiner
+          } else {
+            pcaStatsSubsets <- list(all=trialStatsVec)
+          }
           modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
                            statsToUse=trialStatsVec, balanceWeights=TRUE,
-                           #subsetsPCA=list(all=trialStatsVec),
-                           subsetsPCA=list(all=trialStatsVec),
+                           subsetsPCA=pcaStatsSubsets,
                            layerUnits=layerUnits[[arq]],
                            regularizationWeight=regW,
                            epochs=ep)

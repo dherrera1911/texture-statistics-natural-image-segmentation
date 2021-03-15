@@ -9,6 +9,7 @@ set.seed(2691)
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/3_BSD_results.RDS"
 repExp <- 20
+subsetPCA <- NA
 
 #############################
 # load data
@@ -24,6 +25,12 @@ parNames <- names(segmentStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
+# make name list for doing PCA within subsets of HOS if needed
+statisticsNamesFiner <- get_statistics_names(parNames, subsetHOS=TRUE)
+statisticsNamesFiner <- statisticsNamesFiner[which(names(statisticsNamesFiner)!="design")]
+statisticsNamesFiner <- c(list(pixel=statisticsNamesFiner$pixel),
+                          list(FAS=statisticsNamesFiner$FAS),
+                          statisticsNamesFiner$HOS)
 
 #############################
 #generate template of design matrix for one repetition
@@ -66,8 +73,16 @@ for (r in 1:repExp) {
     trialTypes <- statsTypes[statsInd]
     trialStatsList <- statisticsNames[trialTypes]
     trialStatsVec <- unlist_names(trialStatsList) 
+    if (is.na(subsetPCA)) {
+      pcaStatsSubsets <- NA
+    } else if (subsetPCA) {
+      pcaStatsSubsets <- statisticsNamesFiner
+    } else {
+      pcaStatsSubsets <- list(all=trialStatsVec)
+    }
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
-                     statsToUse=trialStatsVec, balanceWeights=TRUE, subsetsPCA=NA)
+                     statsToUse=trialStatsVec, balanceWeights=TRUE,
+                     subsetsPCA=pcaStatsSubsets)
     copyTemplate$performance[m] <- modelOutcome$accuracy
     print(paste("Rep: ", r,"/", repExp, "     Row: ", m, "/",
                 nrow(copyTemplate), sep=""))
