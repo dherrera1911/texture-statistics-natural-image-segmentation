@@ -109,7 +109,7 @@ assign_stat_name_plot <- function(pixel, FAS, HOS) {
   return(name)
 }
 
-textureResultsFile <- "../../data/texture_results/texture_results.Rds"
+textureResultsFile <- "../../data/texture_results/2_texture_results.RDS"
 textureRes <- readRDS(textureResultsFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
                 error=1-performance)
@@ -141,7 +141,7 @@ texturePlot <- dplyr::filter(textureRes, pixel==1) %>%
   scale_x_discrete(name = "Parameters") +
   NULL
 
-texturePlotName <- paste(plottingDir, "texturePlot.png", sep="")
+texturePlotName <- paste(plottingDir, "2_texturePlot.png", sep="")
 ggsave(texturePlotName, texturePlot, width = 10, height = 7, units = "cm") 
 
 #### plot results without pixel data ####
@@ -260,11 +260,14 @@ bsdPlot <- dplyr::filter(bsdRes, pixel==1) %>%
   stat_summary(fun = "mean") +
   ylim(0, 30) +
   theme_bw() +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   theme(panel.border = element_blank(),
         axis.line.x = element_line(size=0.5, linetype="solid"),
         axis.line.y = element_line(size=0.5, linetype="solid")) +
   scale_x_discrete(name = "Parameters")
+
+BSDPlotName <- paste(plottingDir, "BSDPlot.png", sep="")
+ggsave(BSDPlotName, bsdPlot, width=10, height=7, units = "cm") 
 
 ## plot results when using pixel data ####
 bsdPlot2 <- dplyr::filter(bsdRes, pixel==0) %>%
@@ -278,7 +281,7 @@ bsdPlot2 <- dplyr::filter(bsdRes, pixel==0) %>%
   stat_summary(fun = "mean") +
   ylim(0, 30) +
   theme_bw() +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   theme(panel.border = element_blank(),
         axis.line.x = element_line(size=0.5, linetype="solid"),
         axis.line.y = element_line(size=0.5, linetype="solid")) +
@@ -292,8 +295,7 @@ ggsave(BSDPlotName, bsdPlot2, width = 10, height = 7, units = "cm")
 ##### 5 BSD DNN #########
 #########################
 #########################
-
-bsdDNNFile <- "../../data/BSD_results/4_BSD_dnn_single.RDS"
+bsdDNNFile <- "../../data/BSD_results/4_BSD_dnn.Rds"
 bsdDNNRes <- readRDS(bsdDNNFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
                 error=1-performance)
@@ -319,7 +321,7 @@ bsdDNNPlot <- dplyr::filter(bsdDNNRes, pixel==1) %>%
   theme(panel.border = element_blank(),
         axis.line.x = element_line(size=0.5, linetype="solid"),
         axis.line.y = element_line(size=0.5, linetype="solid")) +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   scale_x_discrete(name = "Parameters")
 
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot.png", sep="")
@@ -338,7 +340,7 @@ bsdDNNPlot2 <- dplyr::filter(bsdDNNRes, pixel==0) %>%
   theme(panel.border=element_blank(),
         axis.line.x=element_line(size=0.5, linetype="solid"),
         axis.line.y=element_line(size=0.5, linetype="solid")) +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   scale_x_discrete(name = "Parameters")
 
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_noPix.png", sep="")
@@ -399,7 +401,7 @@ for (ep in c(1:length(allEpochs))) {
       theme(panel.border = element_blank(),
             axis.line.x = element_line(size=0.5, linetype="solid"),
             axis.line.y = element_line(size=0.5, linetype="solid")) +
-      ylab("error rate (%)") +
+      ylab("Error rate (%)") +
       scale_x_discrete(name = "Parameters",
                        labels = c("Pix", "Pix-Spectral", "Pix-HOS",
                                   "Pix-Spectral-HOS"))
@@ -424,7 +426,7 @@ for (ep in c(1:length(allEpochs))) {
       theme(panel.border = element_blank(),
             axis.line.x = element_line(size=0.5, linetype="solid"),
             axis.line.y = element_line(size=0.5, linetype="solid")) +
-      ylab("error rate (%)") +
+      ylab("Error rate (%)") +
       scale_x_discrete(name = "Parameters")
     bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_param_", 
                             allEpochs[ep], "_", allReguls[reg],
@@ -557,7 +559,7 @@ subsetsPlot <- addedSubsetsDf %>%
                     ymax=(meanError+sdError*2)*100), width=0.1) +
   geom_hline(yintercept=fullModelVals[1]*100, color="#2691d4", linetype=2) +
   geom_hline(yintercept=fullModelVals[2]*100, color="#ba2229", linetype=2) +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   xlab("Statistics used") +
   ylim(c(0, 18)) +
   theme_bw()
@@ -582,7 +584,7 @@ subsetsPlot2 <- removedSubsetsDf %>%
                     ymax=(meanError+sdError*2)*100), width=0.1) +
   geom_hline(yintercept=fullModelVals[1]*100, color="#2691d4", linetype=2) +
   geom_hline(yintercept=fullModelVals[2]*100, color="#ba2229", linetype=2) +
-  ylab("error rate (%)") +
+  ylab("Error rate (%)") +
   xlab("Statistics used") +
   ylim(c(0, 18)) +
   theme_bw()

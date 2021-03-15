@@ -159,8 +159,9 @@ make_task_textures <- function(inputData, nRep){
     reducedDf <- dplyr::filter(inputData, quadrant == sampleQuadrant)
     scrambledDf <- reducedDf[diffSorts[[n]],]  
     # put statistics and condition info into a dataframe
-    diffStats <- (reducedDf - scrambledDf) %>%
-      dplyr::select(., -texture, - quadrant) %>%
+    reducedStats <- dplyr::select(reducedDf, -texture, -quadrant)
+    scrambledStats <- dplyr::select(scrambledDf, -texture, -quadrant)
+    diffStats <- (reducedStats - scrambledStats) %>%
       abs(.)
     diffCond <- data.frame(texture1 = unique(reducedDf$texture),
                            texture2 = unique(scrambledDf$texture), same = 0)

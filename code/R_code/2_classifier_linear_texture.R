@@ -46,7 +46,7 @@ for (r in 1:repExp) {
   nTextures <- length(unique(textureStats$texture))
   sampleTextures <- sample(unique(textureStats$texture))
   trainTextures <- sampleTextures[1:round(nTextures/2)]
-  testTextures <- sampleTextures[round(nTextures/2):nTextures]
+  testTextures <- sampleTextures[(1+round(nTextures/2)):nTextures]
 
   trainData <- dplyr::filter(textureStats, texture %in% trainTextures) %>%
     droplevels(.) %>%

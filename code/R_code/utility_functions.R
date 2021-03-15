@@ -44,7 +44,7 @@ remove_constant_stats <- function(rawData) {
   varNames <- get_statistics_names(names(rawData))
   statisticsNames <- varNames[which(names(varNames)!="design")]
   statisticsNames <- unlist_names(statisticsNames)
-  statsDf <- dplyr::select(rawData, statisticsNames) 
+  statsDf <- dplyr::select(rawData, all_of(statisticsNames))
   statsSD <- as.numeric(lapply(statsDf, sd))
   noVarInds <- which(statsSD == 0)
   if (length(noVarInds)>0) {
