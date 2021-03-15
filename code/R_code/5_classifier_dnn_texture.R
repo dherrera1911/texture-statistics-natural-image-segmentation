@@ -72,7 +72,7 @@ for (r in 1:repExp) {
   copyTemplate$architecture <- archString
   copyTemplate$regularization <- regularizationWeight
   copyTemplate$epochs <- epochs
-
+  copyTemplate$PCA_subsetting <- subsetPCA
   for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
     trialTypes <- statsTypes[statsInd]

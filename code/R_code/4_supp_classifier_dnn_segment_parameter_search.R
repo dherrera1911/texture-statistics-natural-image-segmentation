@@ -56,7 +56,6 @@ for (r in 1:repExp) {
   sampleSegments <- sample(unique(segmentStats$ImageName))
   trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
   testSegments <- sampleSegments[(floor(nSegments*4/5)+1):nSegments]
-
   trainData <- dplyr::filter(allDataTask, ImageName %in% trainSegments) %>%
     droplevels(.)
   testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
@@ -72,6 +71,7 @@ for (r in 1:repExp) {
         copyTemplate$architecture <- archString
         copyTemplate$regularization <- regW
         copyTemplate$epochs <- ep
+        copyTemplate$PCA_subsetting <- subsetPCA
         for (m in c(1:nrow(copyTemplate))) {
           statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
           trialTypes <- statsTypes[statsInd]

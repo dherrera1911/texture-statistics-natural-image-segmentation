@@ -59,56 +59,6 @@ ggsave(paste(plottingDir, "nParameters.png", sep=""), parPlot,
 #############################
 #############################
 
-assign_stat_name <- function(pixel, FAS, HOS) {
-  name <- NULL
-  for (i in c(1:length(pixel))) {
-    pixel_i <- pixel[i]
-    FAS_i <- FAS[i]
-    HOS_i <- HOS[i]
-    if (pixel_i & !FAS_i & !HOS_i) {
-      name[i] <- "Pix"
-    } else if (pixel_i & FAS_i & !HOS_i) {
-      name[i] <- "Pix_FAS"
-    } else if (pixel_i & !FAS_i & HOS_i) {
-      name[i] <- "Pix_HOS"
-    } else if (pixel_i & FAS_i & HOS_i) {
-      name[i] <- "Pix_FAS_HOS"
-    } else if (!pixel_i & FAS_i & HOS_i) {
-      name[i] <- "FAS_HOS"
-    } else if (!pixel_i & FAS_i & !HOS_i) {
-      name[i] <- "FAS"
-    } else if (!pixel_i & !FAS_i & HOS_i) {
-      name[i] <- "HOS"
-    }
-  }
-  return(name)
-}
-
-assign_stat_name_plot <- function(pixel, FAS, HOS) {
-  name <- NULL
-  for (i in c(1:length(pixel))) {
-    pixel_i <- pixel[i]
-    FAS_i <- FAS[i]
-    HOS_i <- HOS[i]
-    if (pixel_i & !FAS_i & !HOS_i) {
-      name[i] <- "Pix"
-    } else if (pixel_i & FAS_i & !HOS_i) {
-      name[i] <- "Pix-Spectral"
-    } else if (pixel_i & !FAS_i & HOS_i) {
-      name[i] <- "Pix-HOS"
-    } else if (pixel_i & FAS_i & HOS_i) {
-      name[i] <- "Pix-Spectral-HOS"
-    } else if (!pixel_i & FAS_i & HOS_i) {
-      name[i] <- "Spectral-HOS"
-    } else if (!pixel_i & FAS_i & !HOS_i) {
-      name[i] <- "Spectral"
-    } else if (!pixel_i & !FAS_i & HOS_i) {
-      name[i] <- "HOS"
-    }
-  }
-  return(name)
-}
-
 textureResultsFile <- "../../data/texture_results/2_texture_results.RDS"
 textureRes <- readRDS(textureResultsFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
