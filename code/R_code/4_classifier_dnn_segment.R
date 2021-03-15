@@ -7,10 +7,10 @@ set.seed(2691)
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/4_BSD_dnn.Rds"
 
-repExp <- 10
-layerUnits <- list(c(30), c(30, 10), c(30, 10, 2), c(50, 20), c(50, 20, 5), c(10, 2))
-regularizationWeight <- c(0.001, 0.002, 0.004)
-epochs <- c(150, 200, 300)
+repExp <- 20
+layerUnits <- c(30, 10)
+regularizationWeight <- c(0.002)
+epochs <- c(200)
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -24,6 +24,12 @@ parNames <- names(segmentStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
+# make name list for doing PCA within subsets of HOS
+statisticsNamesFiner <- get_statistics_names(parNames, subsetHOS=TRUE)
+statisticsNamesFiner <- statisticsNamesFiner[which(names(statisticsNamesFiner)!="design")]
+statisticsNamesFiner <- c(list(pixel=statisticsNamesFiner$pixel),
+                          list(FAS=statisticsNamesFiner$FAS),
+                          statisticsNamesFiner$HOS)
 
 #############################
 #generate template of design matrix for one repetition
@@ -44,6 +50,7 @@ resultsDf <- NULL
 allDataTask <- make_task_BSD(segmentStats)
 
 for (r in 1:repExp) {
+  # split data into train and test set
   nSegments <- length(unique(segmentStats$ImageName))
   sampleSegments <- sample(unique(segmentStats$ImageName))
   trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
@@ -54,39 +61,29 @@ for (r in 1:repExp) {
   testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
     droplevels(.)
 
-  for (arq in c(1:length(layerUnits))) {
-    archString <- paste(layerUnits[[arq]], sep="-", collapse="-")
-    for (regW in regularizationWeight) {
-      for (ep in epochs) {
-        # split data into train and test set
-        copyTemplate <- designMatrixTemp %>%
-          dplyr::mutate(., rep = r)
-        copyTemplate$architecture <- archString
-        copyTemplate$regularization <- regW
-        copyTemplate$epochs <- ep
-        for (m in c(1:nrow(copyTemplate))) {
-          statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
-          trialTypes <- statsTypes[statsInd]
-          trialStatsList <- statisticsNames[trialTypes]
-          trialStatsVec <- unlist_names(trialStatsList) 
-          modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
-                           statsToUse=trialStatsVec, balanceWeights=TRUE,
-                           subsetsPCA=list(all=trialStatsVec),
-                           layerUnits=layerUnits[[arq]],
-                           regularizationWeight=regW,
-                           epochs=ep)
-          copyTemplate$performance[m] <- modelOutcome$accuracy
-          progressText <- paste("Rep:", r, "  Architecture:", archString,
-                                "  RegW:", regW, "  Epochs:", ep,
-                                "  Stats comb:", m, sep="")
-          print(progressText)
-        }
-      resultsDf <- rbind(resultsDf, copyTemplate)
-      saveRDS(resultsDf, saveResults)
-      }
-    }
+  archString <- paste(layerUnits, sep="-", collapse="-")
+  copyTemplate <- designMatrixTemp %>%
+    dplyr::mutate(., rep=r)
+  copyTemplate$architecture <- archString
+  copyTemplate$regularization <- regularizationWeight
+  copyTemplate$epochs <- epochs
+  for (m in c(1:nrow(copyTemplate))) {
+    statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
+    trialTypes <- statsTypes[statsInd]
+    trialStatsList <- statisticsNames[trialTypes]
+    trialStatsVec <- unlist_names(trialStatsList) 
+    modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
+                     statsToUse=trialStatsVec, balanceWeights=TRUE,
+                     subsetsPCA=statisticsNamesFiner,
+                     layerUnits=layerUnits,
+                     regularizationWeight=regularizationWeight,
+                     epochs=epochs)
+    copyTemplate$performance[m] <- modelOutcome$accuracy
+    progressText <- paste("Rep:", r, "  Architecture:", archString,
+                          "  RegW:", regularizationWeight, "  Epochs:", epochs,
+                          "  Stats comb:", m, sep="")
+    resultsDf <- rbind(resultsDf, copyTemplate)
+    saveRDS(resultsDf, saveResults)
   }
 }
-
-# save results
 

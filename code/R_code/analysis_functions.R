@@ -60,21 +60,24 @@ subset_statsPCA <- function(trainStats, testStats, subsetList,
   for (t in c(1:length(subsetList))) {
     t_name <- subsetNames[t]
     subsetStats <- subsetList[[t]]
-    subsetTrain <- dplyr::select(trainStats, all_of(subsetStats))
-    subsetTest <- dplyr::select(testStats, all_of(subsetStats))
-    trainPCA <- prcomp(subsetTrain)
-    prcSumm <- summary(trainPCA)
-    cummulativeVariance <- prcSumm[["importance"]][3,]
-    lastComp <- which(cummulativeVariance >= varianceRetained)[1]
-    rotationMat <- prcSumm$rotation[,1:lastComp]
-    trainPCAvals <- as.data.frame(as.matrix(subsetTrain) %*% rotationMat)
-    testPCAvals <- as.data.frame(as.matrix(subsetTest) %*% rotationMat)
-    # put the PCA vals into a dataframe
-    variableNames <- paste(t_name, "_PC", c(1:lastComp), sep="")
-    names(trainPCAvals) <- variableNames
-    names(testPCAvals) <- variableNames
-    trainPCall <- cbind(trainPCall, trainPCAvals)
-    testPCall <- cbind(testPCall, testPCAvals)
+    # check that the subset list stats are in the train stats
+    if (any(subsetStats %in% names(trainStats))) {
+      subsetTrain <- dplyr::select(trainStats, all_of(subsetStats))
+      subsetTest <- dplyr::select(testStats, all_of(subsetStats))
+      trainPCA <- prcomp(subsetTrain)
+      prcSumm <- summary(trainPCA)
+      cummulativeVariance <- prcSumm[["importance"]][3,]
+      lastComp <- which(cummulativeVariance >= varianceRetained)[1]
+      rotationMat <- prcSumm$rotation[,1:lastComp]
+      trainPCAvals <- as.data.frame(as.matrix(subsetTrain) %*% rotationMat)
+      testPCAvals <- as.data.frame(as.matrix(subsetTest) %*% rotationMat)
+      # put the PCA vals into a dataframe
+      variableNames <- paste(t_name, "_PC", c(1:lastComp), sep="")
+      names(trainPCAvals) <- variableNames
+      names(testPCAvals) <- variableNames
+      trainPCall <- cbind(trainPCall, trainPCAvals)
+      testPCall <- cbind(testPCall, testPCAvals)
+    }
   }
   output <- list(trainPCA = trainPCall, testPCA = testPCall)
   return(output)
@@ -223,7 +226,7 @@ compute_angles <- function(inputData){
 
 # Generate a list with the prepared data to train and test a model
 prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
-                             balanceWeights = TRUE, subsetsPCA=NA,
+                             balanceWeights=TRUE, subsetsPCA=NA,
                              labelColumn="same") {
   # calculate weights to even out classes
   weights <- rep(1, nrow(trainData))

@@ -10,7 +10,7 @@
 # statistics. If subsetHOS = TRUE, in the HOS field
 # of the output returns a list with all subsets of
 # HOS
-get_statistics_names <- function(dfNamesVec, subsetHOS = FALSE) {
+get_statistics_names <- function(dfNamesVec, subsetHOS=FALSE) {
   # get the indices of the different types of stats to use
   indPix <- c(grep("pix", dfNamesVec), grep("^LP", dfNamesVec))
   namesPix <- dfNamesVec[indPix]
@@ -133,5 +133,4 @@ confusion_indices <- function(predictions, reference) {
   confusionVec[which(falseInds & negativeInd)] <- "FP"
   return(confusionVec)
 }
-
 
