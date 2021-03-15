@@ -9,8 +9,8 @@ saveResults <- "../../data/BSD_results/4_BSD_dnn.Rds"
 
 repExp <- 20
 layerUnits <- c(30, 10)
-regularizationWeight <- c(0.002)
-epochs <- c(200)
+regularizationWeight <- 0.002
+epochs <- 200
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -74,6 +74,7 @@ for (r in 1:repExp) {
     trialStatsVec <- unlist_names(trialStatsList) 
     modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE,
+                     #subsetsPCA=list(all=trialStatsVec),
                      subsetsPCA=statisticsNamesFiner,
                      layerUnits=layerUnits,
                      regularizationWeight=regularizationWeight,
@@ -82,8 +83,8 @@ for (r in 1:repExp) {
     progressText <- paste("Rep:", r, "  Architecture:", archString,
                           "  RegW:", regularizationWeight, "  Epochs:", epochs,
                           "  Stats comb:", m, sep="")
-    resultsDf <- rbind(resultsDf, copyTemplate)
-    saveRDS(resultsDf, saveResults)
   }
+  resultsDf <- rbind(resultsDf, copyTemplate)
+  saveRDS(resultsDf, saveResults)
 }
 

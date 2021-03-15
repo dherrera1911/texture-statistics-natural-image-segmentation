@@ -6,7 +6,7 @@ source("./analysis_functions.R")
 set.seed(2691)
 
 dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
-saveResults <- "../../data/texture_results/texture_dnn.Rds"
+saveResults <- "../../data/texture_results/5_texture_dnn.Rds"
 
 repExp <- 20
 nRep <- 5
@@ -28,6 +28,12 @@ parNames <- names(textureStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
+# make name list for doing PCA within subsets of HOS
+statisticsNamesFiner <- get_statistics_names(parNames, subsetHOS=TRUE)
+statisticsNamesFiner <- statisticsNamesFiner[which(names(statisticsNamesFiner)!="design")]
+statisticsNamesFiner <- c(list(pixel=statisticsNamesFiner$pixel),
+                          list(FAS=statisticsNamesFiner$FAS),
+                          statisticsNamesFiner$HOS)
 
 #############################
 #generate template of design matrix for one repetition
@@ -59,6 +65,12 @@ for (r in 1:repExp) {
 
   copyTemplate <- designMatrixTemp %>%
     dplyr::mutate(., rep = r)
+  archString <- paste(layerUnits, sep="-", collapse="-")
+  copyTemplate <- designMatrixTemp %>%
+    dplyr::mutate(., rep=r)
+  copyTemplate$architecture <- archString
+  copyTemplate$regularization <- regularizationWeight
+  copyTemplate$epochs <- epochs
 
   for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("pixel", "FAS", "HOS")])==1)
@@ -67,14 +79,17 @@ for (r in 1:repExp) {
     trialStatsVec <- unlist_names(trialStatsList) 
     modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE,
-                     subsetsPCA=list(all=trialStatsVec),
+                     #subsetsPCA=list(all=trialStatsVec),
+                     subsetsPCA=statisticsNamesFiner,
                      layerUnits=layerUnits,
                      regularizationWeight=regularizationWeight,
                      epochs=epochs)
     copyTemplate$performance[m] <- modelOutcome$accuracy
+    progressText <- paste("Rep:", r, "  Architecture:", archString,
+                          "  RegW:", regularizationWeight, "  Epochs:", epochs,
+                          "  Stats comb:", m, sep="")
   }
   resultsDf <- rbind(resultsDf, copyTemplate)
+  saveRDS(resultsDf, saveResults)
 }
-
-saveRDS(resultsDf, saveResults)
 

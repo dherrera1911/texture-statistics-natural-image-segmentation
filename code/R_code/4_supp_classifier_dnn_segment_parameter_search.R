@@ -78,6 +78,7 @@ for (r in 1:repExp) {
           trialStatsVec <- unlist_names(trialStatsList) 
           modelOutcome <- train_test_dnn(trainData=trainData, testData=testData,
                            statsToUse=trialStatsVec, balanceWeights=TRUE,
+                           #subsetsPCA=list(all=trialStatsVec),
                            subsetsPCA=list(all=trialStatsVec),
                            layerUnits=layerUnits[[arq]],
                            regularizationWeight=regW,
@@ -88,8 +89,8 @@ for (r in 1:repExp) {
                                 "  Stats comb:", m, sep="")
           print(progressText)
         }
-      resultsDf <- rbind(resultsDf, copyTemplate)
-      saveRDS(resultsDf, saveResults)
+        resultsDf <- rbind(resultsDf, copyTemplate)
+        saveRDS(resultsDf, saveResults)
       }
     }
   }
