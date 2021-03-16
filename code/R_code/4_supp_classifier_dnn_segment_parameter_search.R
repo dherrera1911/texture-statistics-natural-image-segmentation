@@ -9,10 +9,9 @@ saveResults <- "../../data/BSD_results/4_BSD_dnn_params.Rds"
 saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
 
 repExp <- 10
-layerUnits <- list(c(30), c(30, 10))
-#layerUnits <- list(c(30, 10, 2), c(50, 20))
-#layerUnits <- list(c(50, 20, 5), c(10, 2))
-regularizationWeight <- c(0.001)
+layerUnits <- list(c(30), c(10), c(30, 10), c(30, 10, 2))
+#layerUnits <- list(c(50, 20)), c(50, 20, 5), c(10, 2))
+regularizationWeight <- c(0.003)
 epochs <- c(350)
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
 
@@ -32,9 +31,9 @@ statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 #############################
 #generate template of design matrix for one repetition
 #############################
-pixel <- c(0,1)
+pixel <- c(1)
 FAS <- c(0,1)
-HOS <- c(0,1)
+HOS <- c(1)
 statsTypes <- c("pixel", "FAS", "HOS")
 designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
   dplyr::mutate(., rep=NA, performance=NA) %>%
@@ -99,6 +98,9 @@ for (r in 1:repExp) {
                                 "  RegW:", regW, "  Epochs:", ep,
                                 "  Stats comb:", m, sep="")
           print(progressText)
+          statsName <- assign_stat_name(pixel=copyTemplate[m,"pixel"],
+                                       FAS=copyTemplate[m,"FAS"],
+                                       HOS=copyTemplate[m,"HOS"])
           trainingHistory[[archString]][[statsName]] <-
             rbind(trainingHistory[[archString]][[statsName]],
                   modelOutcome$accuracyHistory)

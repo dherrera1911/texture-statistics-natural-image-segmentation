@@ -7,9 +7,9 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/3_BSD_results.RDS"
+saveResults <- "../../data/BSD_results/3_BSD_results_PCA_subsetted.RDS"
 repExp <- 20
-subsetPCA <- NA
+subsetPCA <- TRUE
 
 #############################
 # load data
