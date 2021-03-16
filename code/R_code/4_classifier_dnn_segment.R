@@ -6,9 +6,10 @@ set.seed(2691)
 
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/4_BSD_dnn.Rds"
+saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_history.Rds"
 
 repExp <- 20
-layerUnits <- c(30, 10)
+layerUnits <- c(30)
 regularizationWeight <- 0.002
 epochs <- 200
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
@@ -49,6 +50,7 @@ resultsDf <- NULL
 #Put together the pairs of patches
 #############################
 allDataTask <- make_task_BSD(segmentStats)
+trainingHistory <- list()
 
 for (r in 1:repExp) {
   # split data into train and test set
@@ -89,8 +91,15 @@ for (r in 1:repExp) {
     progressText <- paste("Rep:", r, "  Architecture:", archString,
                           "  RegW:", regularizationWeight, "  Epochs:", epochs,
                           "  Stats comb:", m, sep="")
+    # save the training history
+    statsName <- assign_stat_name(pixel=copyTemplate[m,"pixel"],
+                                 FAS=copyTemplate[m,"FAS"],
+                                 HOS=copyTemplate[m,"HOS"])
+    trainingHistory[[statsName]] <- rbind(trainingHistory[[statsName]],
+                                          modelOutcome$accuracyHistory)
   }
   resultsDf <- rbind(resultsDf, copyTemplate)
   saveRDS(resultsDf, saveResults)
+  saveRDS(trainingHistory, saveResultsHistory)
 }
 

@@ -6,13 +6,14 @@ set.seed(2691)
 
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/4_BSD_dnn_params.Rds"
+saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
 
 repExp <- 10
 layerUnits <- list(c(30), c(30, 10))
 #layerUnits <- list(c(30, 10, 2), c(50, 20))
 #layerUnits <- list(c(50, 20, 5), c(10, 2))
 regularizationWeight <- c(0.001)
-epochs <- c(150)
+epochs <- c(350)
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
 
 # load data
@@ -50,6 +51,11 @@ if (file.exists(saveResults)) {
 #Put together the pairs of patches
 #############################
 allDataTask <- make_task_BSD(segmentStats)
+trainingHistory <- list()
+for (arq in c(1:length(layerUnits))) {
+  archString <- paste(layerUnits[[arq]], sep="-", collapse="-")
+  trainingHistory[[archString]] <- list()
+}
 
 for (r in 1:repExp) {
   nSegments <- length(unique(segmentStats$ImageName))
@@ -93,9 +99,13 @@ for (r in 1:repExp) {
                                 "  RegW:", regW, "  Epochs:", ep,
                                 "  Stats comb:", m, sep="")
           print(progressText)
+          trainingHistory[[archString]][[statsName]] <-
+            rbind(trainingHistory[[archString]][[statsName]],
+                  modelOutcome$accuracyHistory)
         }
         resultsDf <- rbind(resultsDf, copyTemplate)
         saveRDS(resultsDf, saveResults)
+        saveRDS(trainingHistory, saveResultsHistory)
       }
     }
   }

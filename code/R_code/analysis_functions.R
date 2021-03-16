@@ -356,10 +356,11 @@ train_test_dnn <- function(trainData, testData, statsToUse=NA,
   predictionOutcome <- mean(correctPredictions)
   confusionMatrix <- caret::confusionMatrix(factor(modelPredictions),
                                                      factor(preparedData$testLabel))
-  modelOutput <- list(predictions = modelPredictions,
-                      accuracy = predictionOutcome,
-                      correctPredictions = correctPredictions,
-                      confusionMatrix = confusionMatrix)
+  modelOutput <- list(predictions=modelPredictions,
+                      accuracy=predictionOutcome,
+                      correctPredictions=correctPredictions,
+                      confusionMatrix=confusionMatrix,
+                      accuracyHistory=modelDNN$history$history$val_binary_accuracy)
   return(modelOutput)
 }
 
