@@ -188,7 +188,7 @@ ggsave(texturePlotName, textureDNNPlot2, width=10, height=7, units = "cm")
 #############################
 #############################
 
-bsdFile <- "../../data/BSD_results/3_BSD_results.RDS"
+bsdFile <- "../../data/BSD_results/3_BSD_results_PCA_subsetted_60.RDS"
 bsdRes <- readRDS(bsdFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
                 error=1-performance)
@@ -277,7 +277,7 @@ bsdDNNPlot <- dplyr::filter(bsdDNNRes, pixel==1) %>%
   scale_x_discrete(name="Parameters")
 
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot.png", sep="")
-ggsave(bsdDNNPlotName, bsdDNNPlot, width = 10, height = 7, units = "cm") 
+ggsave(bsdDNNPlotName, bsdDNNPlot, width=10, height=7, units="cm") 
 
 bsdDNNPlot2 <- dplyr::filter(bsdDNNRes, pixel==0) %>%
   droplevels(.) %>%
@@ -296,7 +296,7 @@ bsdDNNPlot2 <- dplyr::filter(bsdDNNRes, pixel==0) %>%
   scale_x_discrete(name = "Parameters")
 
 bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_noPix.png", sep="")
-ggsave(bsdDNNPlotName, bsdDNNPlot2, width = 10, height = 7, units = "cm") 
+ggsave(bsdDNNPlotName, bsdDNNPlot2, width=10, height=7, units="cm") 
 
 ##################################
 ##################################
@@ -384,9 +384,61 @@ for (ep in c(1:length(allEpochs))) {
                             allEpochs[ep], "_", allReguls[reg],
                             "_noPix.png", sep="")
     ggsave(bsdDNNPlotName, bsdDNNParPlot2[[ep]][[reg]],
-           width=20, height=14, units = "cm") 
+           width=20, height=14, units="cm") 
   }
 }
+
+###################################################
+###################################################
+##### 5.3 BSD DNN convergence progression #########
+###################################################
+###################################################
+dnnHistFile <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
+dnnHistoryList <- readRDS(dnnHistFile)
+
+architectures <- names(dnnHistoryList)
+statsNames <- names(dnnHistoryList[[1]])
+
+historyDf <- data.frame()
+for (arch in architectures) {
+  for (sn in statsNames) {
+    errorMeans <- 1-(colMeans(dnnHistoryList[[arch]][[sn]]))
+    errorSd <- sqrt(colVars(dnnHistoryList[[arch]][[sn]]))
+    tempDf <- data.frame(architecture=arch, stats=sn,
+                         epoch=c(1:length(errorMeans)),
+                         error=errorMeans, sd=errorSd)
+    historyDf <- rbind(historyDf, tempDf)
+  }
+}
+
+# Plot the performance progression
+linearHOS <- dplyr::filter(bsdPerformanceSummary,
+                           statsName=="Pix-HOS")[["meanError"]]
+historyPlot_HOS <- dplyr::filter(historyDf, stats=="Pix_HOS") %>%
+  ggplot(., aes(x=epoch, y=error*100, color=architecture)) +
+  geom_line() +
+  ylab("Error") +
+  xlab("Epoch") +
+  theme_bw() +
+  ylim(c(0, 50)) +
+  geom_hline(yintercept=linearHOS*100, linetype=2)
+
+dnnHistoryPlotName <- paste(plottingDir, "4_NNhistoryPlot_HOS.png", sep="")
+ggsave(dnnHistoryPlotName, historyPlot_HOS, width=10, height=7, units="cm") 
+
+# Plot the performance progression
+linearFASHOS <- dplyr::filter(bsdPerformanceSummary,
+                           statsName=="Pix-Spectral-HOS")[["meanError"]]
+historyPlot_FASHOS <- dplyr::filter(historyDf, stats=="Pix_FAS_HOS") %>%
+  ggplot(., aes(x=epoch, y=error*100, color=architecture)) +
+  geom_line() +
+  ylab("Error") +
+  xlab("Epoch") +
+  theme_bw() +
+  ylim(c(0, 50)) +
+  geom_hline(yintercept=linearFASHOS*100, linetype=2)
+dnnHistoryPlotName <- paste(plottingDir, "4_NNhistoryPlot_FASHOS.png", sep="")
+ggsave(dnnHistoryPlotName, historyPlot_FASHOS, width=10, height=7, units="cm") 
 
 
 ##################################
@@ -394,39 +446,51 @@ for (ep in c(1:length(allEpochs))) {
 ##### 6 analyze agreement ########
 ##################################
 ##################################
-agreementFile <- "../../data/BSD_results/6_classification_agreement.csv"
-agreementDf <- read.csv(agreementFile, stringsAsFactors=FALSE)
+#agreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
+agreementFile <- "../../data/texture_results/6_classification_agreement_textures.Rds"
+agreementDf <- readRDS(agreementFile)
 
-agreementSel <- dplyr::select(agreementDf, same, betterHOS, betterFASHOS) %>%
-  tidyr::pivot_longer(., cols=c("betterHOS", "betterFASHOS"),
+agreementSel <- dplyr::select(agreementDf, same, betterHOS, betterFASHOS,
+                              wrongFAS) %>%
+  tidyr::pivot_longer(., cols=c("betterHOS", "betterFASHOS", "wrongFAS"),
                       names_to="comparison", values_to="result")
+
+agreementSummaryCoarse <- agreementSel %>%
+  group_by(., comparison) %>% 
+  summarize(., proportion=mean(result)) %>%
+  dplyr::mutate(., comparison=factor(comparison,
+                                       levels=c("betterHOS", "betterFASHOS",
+                                                "wrongFAS"),
+                                       labels=c("HOS", "Spectral-HOS",
+                                                "Bad-Spectral")))
 
 agreementSummary <- agreementSel %>%
   group_by(., same, comparison) %>% 
-  summarize(., Better=mean(result), Not_better=mean(result==0)) %>%
-  tidyr::pivot_longer(., cols=c("Better", "Not_better"),
-                      names_to="outcome", values_to="proportion") %>%
+  summarize(., proportion=mean(result)) %>%
   dplyr::mutate(., comparison=factor(comparison,
-                                       levels=c("betterHOS", "betterFASHOS"),
-                                       labels=c("HOS", "Spectral-HOS")),
-                outcome=factor(outcome,
-                               levels=c("Not_better", "Better")),
+                                       levels=c("betterHOS", "betterFASHOS",
+                                                "wrongFAS"),
+                                       labels=c("HOS", "Spectral-HOS",
+                                                "Bad-Spectral")),
                 same=factor(same, levels=c(0, 1),
                             labels=c("Different", "Same")))
 
-agreementPlot <- ggplot(data=agreementSummary, aes(x=outcome, y=proportion*100,
-                                                   fill=same)) +
+agreementPlot <- dplyr::filter(agreementSummary, outcome=="Better") %>%
+  ggplot(data=., aes(x=same, y=proportion*100, fill=same)) +
   geom_bar(stat="identity", position="dodge") +
   facet_wrap(~comparison) +
   scale_fill_manual(name="Pair class",
                      labels=c("Different", "Same"),
                        values=c("#b33018", "#14b74b")) +
+  scale_x_discrete(labels=NULL) +
+  scale_y_continuous(limits=c(0,10), expand=c(0, 0)) +
   xlab("") +
-  ylab("% relative to spectral") +
-  theme_bw()
+  ylab("% pairs better than spectral") +
+  theme_bw() +
+  theme(axis.ticks=element_blank())
 
 agreementPlotName <- paste(plottingDir, "agreement_bars.png", sep="")
-ggsave(agreementPlotName,  agreementPlot, width=10, height=6, units = "cm") 
+ggsave(agreementPlotName,  agreementPlot, width=13, height=9, units="cm") 
 
 agreementFASHOSPlot <- dplyr::filter(agreementSummary, comparison=="Spectral-HOS") %>%
   ggplot(data=., aes(x=outcome, y=proportion*100, fill=same)) +
@@ -450,6 +514,12 @@ agreementPredDf <- readRDS(agreementPredFile)
 
 predictionHOS <- caret::confusionMatrix(agreementPredDf$confusionHOS)
 predictionFASHOS <- caret::confusionMatrix(agreementPredDf$confusionFASHOS)
+
+agreementPredTextureFile <- "../../data/texture_results/7_confusion_matrices_texture.RDS"
+agreementPredTextureDf <- readRDS(agreementPredTextureFile)
+
+predictionHOSTexture <- caret::confusionMatrix(agreementPredTextureDf$confusionHOS)
+predictionFASHOSTexture <- caret::confusionMatrix(agreementPredTextureDf$confusionFASHOS)
 
 
 ######################################
@@ -491,8 +561,7 @@ assign_subset_name_plot <- function(FAS, acm, cmc, pmc, prc) {
 subsetsFile <- "../../data/BSD_results/8_subset_stats_performance_FAS.RDS"
 subsetsDf <- readRDS(subsetsFile) %>%
   dplyr::mutate(., statsName=assign_subset_name_plot(FAS, acm, cmc, pmc, prc),
-                error=1-performance,
-                numberSubsets=FAS+acm+cmc+pmc+prc)
+                error=1-performance, numberSubsets=FAS+acm+cmc+pmc+prc)
 
 subsetsSummary <- group_by(subsetsDf, statsName, FAS, acm, cmc, pmc, prc, numberSubsets) %>%
   summarize(., meanError=mean(error), sdError=sd(error)/sqrt(n())) %>%

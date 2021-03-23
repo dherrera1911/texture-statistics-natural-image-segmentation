@@ -10,7 +10,7 @@ saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
 
 repExp <- 10
 layerUnits <- list(c(30), c(10), c(30, 10), c(30, 10, 2))
-#layerUnits <- list(c(50, 20)), c(50, 20, 5), c(10, 2))
+#layerUnits <- list(c(50), c(50, 20)), c(50, 20, 5), c(10, 2))
 regularizationWeight <- c(0.003)
 epochs <- c(350)
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics

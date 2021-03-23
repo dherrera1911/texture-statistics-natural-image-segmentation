@@ -42,8 +42,8 @@ FAS <- c(0,1)
 HOS <- c(0,1)
 statsTypes <- c("pixel", "FAS", "HOS")
 designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
-  dplyr::mutate(., rep = NA, performance = NA) %>%
-  dplyr::rename(., pixel = Var1, FAS = Var2, HOS = Var3) %>%
+  dplyr::mutate(., rep=NA, performance=NA) %>%
+  dplyr::rename(., pixel=Var1, FAS=Var2, HOS=Var3) %>%
   dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
 resultsDf <- NULL
 
@@ -62,7 +62,7 @@ for (r in 1:repExp) {
     make_task_textures(., nRep)
 
   copyTemplate <- designMatrixTemp %>%
-    dplyr::mutate(., rep = r)
+    dplyr::mutate(., rep=r)
 
   # if selected, do pixel stats model
   for (m in c(1:nrow(copyTemplate))) {

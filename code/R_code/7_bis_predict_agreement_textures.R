@@ -6,9 +6,9 @@ library(vcd)
 source("./analysis_functions.R")
 set.seed(2691)
 
-agreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
-saveConfusionMat <- "../../data/BSD_results/7_confusion_matrices.RDS"
-saveSegmentOutcome <- "../../data/BSD_results/7_segment_outcomes.RDS"
+agreementFile <- "../../data/texture_results/6_classification_agreement_textures.Rds"
+saveConfusionMat <- "../../data/texture_results/7_confusion_matrices_texture.RDS"
+saveTextureOutcome <- "../../data/BSD_results/7_segment_outcomes.RDS"
 dataSplits <- 10
 
 #############################
@@ -32,23 +32,23 @@ statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 ################
 
 # Make test splits to cover all images
-nSegments <- length(unique(agreementDf$ImageName))
-sampleSegments <- sample(unique(agreementDf$ImageName))
-splitSize <- ceiling(nSegments/dataSplits)
-testSegmentsList <- split(sampleSegments,
-                          ceiling(seq_along(sampleSegments)/splitSize))
+nTextures <- length(unique(agreementDf$texture1))
+sampleTextures <- sample(unique(agreementDf$texture1))
+splitSize <- ceiling(nTextures/dataSplits)
+testTexturesList <- split(sampleTextures,
+                          ceiling(seq_along(sampleTextures)/splitSize))
 
 confusionMatHOS <- matrix(0,2,2)
 confusionMatFASHOS <- matrix(0,2,2)
 texturesOutcome <- NULL
 
-for (r in c(1:length(testSegmentsList))) {
-  testSegments <- testSegmentsList[[r]]
-  trainSegments <- sampleSegments[which(!sampleSegments %in% testSegments)]
+for (r in c(1:length(testTexturesList))) {
+  testTextures <- testTexturesList[[r]]
+  trainTextures <- sampleTextures[which(!sampleTextures %in% testTextures)]
 
-  trainData <- dplyr::filter(agreementDf, ImageName %in% trainSegments) %>%
+  trainData <- dplyr::filter(agreementDf, texture1 %in% trainTextures) %>%
     droplevels(.)
-  testData <- dplyr::filter(agreementDf, ImageName %in% testSegments) %>%
+  testData <- dplyr::filter(agreementDf, texture1 %in% testTextures) %>%
     droplevels(.)
 
   statsToUse <- unlist_names(statisticsNames[c("FAS", "HOS")])
@@ -85,5 +85,5 @@ confusionMatrices <- list(confusionHOS=confusionMatHOS,
                           confusionFASHOS=confusionMatFASHOS)
 
 saveRDS(confusionMatrices, saveConfusionMat)
-saveRDS(texturesOutcome, saveSegmentOutcome)
+saveRDS(texturesOutcome, saveTextureOutcome)
 

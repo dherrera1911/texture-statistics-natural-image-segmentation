@@ -7,9 +7,10 @@ set.seed(2691)
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/3_BSD_results_PCA_subsetted.RDS"
+saveResults <- "../../data/BSD_results/3_BSD_results_PCA_subsetted_60.RDS"
 repExp <- 20
 subsetPCA <- TRUE
+pcaVar <- 0.6
 
 #############################
 # load data
@@ -82,7 +83,7 @@ for (r in 1:repExp) {
     }
     modelOutcome <- train_test_ridge(trainData=trainData, testData=testData,
                      statsToUse=trialStatsVec, balanceWeights=TRUE,
-                     subsetsPCA=pcaStatsSubsets)
+                     subsetsPCA=pcaStatsSubsets, varianceRetained=pcaVar)
     copyTemplate$performance[m] <- modelOutcome$accuracy
     print(paste("Rep: ", r,"/", repExp, "     Row: ", m, "/",
                 nrow(copyTemplate), sep=""))

@@ -1,31 +1,30 @@
 library(tidyr)
 library(dplyr)
 library(glmnet)
-library(caret)
-library(vcd)
 source("./analysis_functions.R")
 set.seed(2691)
 
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
-#dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
-#saveAgreementFile <- "../../data/BSD_results/6_classification_agreement_texture.Rds"
-dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveAgreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
-saveAgreementFileCsv <- "../../data/BSD_results/6_classification_agreement.csv"
+#dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
+dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
+saveAgreementFile <- "../../data/texture_results/6_classification_agreement_textures.Rds"
+saveAgreementFileCsv <- "../../data/texture_results/6_classification_agreement_textures.csv"
+subsetPCA <- NA
 
+nRep <- 5
 dataSplits <- 10
 
 #############################
 # load data
 #############################
-segmentStats <- read.csv(dataFile, sep = ",") %>%
+textureStats <- read.csv(dataFile, sep = ",") %>%
   as_tibble(.) %>%
   remove_constant_stats(.)
 
 #############################
 # get the names of the different stats to use
 #############################
-parNames <- names(segmentStats)
+parNames <- names(textureStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
@@ -33,34 +32,48 @@ statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
 #################################################
 # Make test splits to cover all images
 #################################################
-nSegments <- length(unique(segmentStats$ImageName))
-sampleSegments <- sample(unique(segmentStats$ImageName))
-splitSize <- ceiling(nSegments/dataSplits)
-testSegmentsList <- split(sampleSegments,
-                          ceiling(seq_along(sampleSegments)/splitSize))
+nTextures <- length(unique(textureStats$texture))
+sampleTextures <- sample(unique(textureStats$texture))
+splitSize <- ceiling(nTextures/dataSplits)
+testTexturesList <- split(sampleTextures,
+                          ceiling(seq_along(sampleTextures)/splitSize))
 
-allDataTask <- make_task_BSD(segmentStats)
+#############################
+#generate template of design matrix for one repetition
+#############################
+pixel <- c(0,1)
+FAS <- c(0,1)
+HOS <- c(0,1)
+statsTypes <- c("pixel", "FAS", "HOS")
+designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
+  dplyr::mutate(., rep=NA, performance=NA) %>%
+  dplyr::rename(., pixel=Var1, FAS=Var2, HOS=Var3) %>%
+  dplyr::filter(., !(pixel==0 & FAS==0 & HOS==0))
+resultsDf <- NULL
 
 agreementDf <- NULL
 for (r in 1:dataSplits) {
   # get the segments to test, and split the rest into two training sets
-  testSegments <- testSegmentsList[[r]]
-  trainSegmentsAll <- sampleSegments[which(!sampleSegments %in% testSegments)]
-  trainSegmentsAll <- sample(trainSegmentsAll)
-  nTrainSegs <- length(trainSegmentsAll)
-  halfTrainSegs <- round(nTrainSegs/2)
-  trainSegments1 <- trainSegmentsAll[1:halfTrainSegs]
-  trainSegments2 <- trainSegmentsAll[(halfTrainSegs+1):nTrainSegs]
+  testTextures <- testTexturesList[[r]]
+  trainTexturesAll <- sampleTextures[which(!sampleTextures %in% testTextures)]
+  trainTexturesAll <- sample(trainTexturesAll)
+  nTrainTextures <- length(trainTexturesAll)
+  halfTrainTextures <- round(nTrainTextures/2)
+  trainTextures1 <- trainTexturesAll[1:halfTrainTextures]
+  trainTextures2 <- trainTexturesAll[(halfTrainTextures+1):nTrainTextures]
 
   trainDataSplit <- list()
-  trainDataSplit[[1]] <- dplyr::filter(allDataTask, ImageName %in% trainSegments1) %>%
+  trainDataSplit[[1]] <- dplyr::filter(textureStats, texture %in% trainTextures1) %>%
     droplevels(.) %>%
+    make_task_textures(., nRep) %>%
     as_tibble(.)
-  trainDataSplit[[2]] <- dplyr::filter(allDataTask, ImageName %in% trainSegments2) %>%
+  trainDataSplit[[2]] <- dplyr::filter(textureStats, texture %in% trainTextures2) %>%
     droplevels(.) %>%
+    make_task_textures(., nRep) %>%
     as_tibble(.)
-  testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
+  testData <- dplyr::filter(textureStats, texture %in% testTextures) %>%
     droplevels(.) %>%
+    make_task_textures(., nRep) %>%
     as_tibble(.)
 
   # train and test models for the two training set splits

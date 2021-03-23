@@ -6,23 +6,24 @@ set.seed(2691)
 
 #dataFile <- "../../data/texture_stats/texture_stats.csv"
 #dataFile <- "../../data/texture_stats/texture_stats_pixNorm.csv"
-dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-savePerformanceResults <- "../../data/BSD_results/8_subset_stats_performance.RDS"
-saveTexturePredictions <- "../../data/BSD_results/8_bsd_predictions_subsets.RDS"
+dataFile <- "../../data/texture_stats/texture_stats_statsNorm.csv"
+savePerformanceResults <- "../../data/texture_results/8_subset_stats_performance_texture.RDS"
+#saveTexturePredictions <- "../../data/BSD_results/8_bsd_predictions_subsets.RDS"
 #dataSplits <- 10
 repExp <- 20
+nRep <- 5
 
 #############################
 # load data
 #############################
-segmentStats <- read.csv(dataFile, sep = ",") %>%
+textureStats <- read.csv(dataFile, sep = ",") %>%
   as_tibble(.) %>%
   remove_constant_stats(.)
 
 #############################
 # get the names of the different stats to use
 #############################
-parNames <- names(segmentStats)
+parNames <- names(textureStats)
 statisticsNames <- get_statistics_names(parNames, subsetHOS=TRUE)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
@@ -46,47 +47,32 @@ designMatrixTemp <- expand.grid(FAS, acm, cmc, pmc, prc) %>%
 modelPerformance <- NULL
 texturePredictions <- NULL
 
-
-##################################################
-## Make test splits to cover all images
-##################################################
-#nSegments <- length(unique(segmentStats$ImageName))
-#sampleSegments <- sample(unique(segmentStats$ImageName))
-#splitSize <- ceiling(nSegments/dataSplits)
-#testSegmentsList <- split(sampleSegments,
-#                          ceiling(seq_along(sampleSegments)/splitSize))
-
-#############################
-#Put together the pairs of patches
-#############################
-allDataTask <- make_task_BSD(segmentStats)
-
 #############################
 #Fit the models
 #############################
 #for (r in 1:dataSplits) {
 for (r in 1:repExp) {
-  ## get the segments to test, and split the rest into two training sets
-  #testSegments <- testSegmentsList[[r]]
-  #trainSegments <- sampleSegments[which(!sampleSegments %in% testSegments)]
+  # sample train and test data examples
+  nTextures <- length(unique(textureStats$texture))
+  sampleTextures <- sample(unique(textureStats$texture))
+  trainTextures <- sampleTextures[1:round(nTextures/2)]
+  testTextures <- sampleTextures[(1+round(nTextures/2)):nTextures]
 
-  # Make random segment allocation in train and test
-  nSegments <- length(unique(segmentStats$ImageName))
-  sampleSegments <- sample(unique(segmentStats$ImageName))
-  trainSegments <- sampleSegments[1:floor(nSegments*4/5)]
-  testSegments <- sampleSegments[(floor(nSegments*4/5)+1):nSegments]
+  trainData <- dplyr::filter(textureStats, texture %in% trainTextures) %>%
+    droplevels(.) %>%
+    make_task_textures(., nRep)
+  testData <- dplyr::filter(textureStats, texture %in% testTextures) %>%
+    droplevels(.) %>%
+    make_task_textures(., nRep)
 
-  trainData <- dplyr::filter(allDataTask, ImageName %in% trainSegments) %>%
-    droplevels(.)
-  testData <- dplyr::filter(allDataTask, ImageName %in% testSegments) %>%
-    droplevels(.)
-  
   copyTemplate <- designMatrixTemp %>%
     dplyr::mutate(., rep = r)
 
-  textureResultsDf <- dplyr::select(testData, same, all_of(designNames))
+  parNames <- names(trainData)
+  statisticsNames <- get_statistics_names(parNames, subsetHOS=TRUE)
+  designNames <- statisticsNames$design
 
-  #print(paste("Split: ", r, "/", dataSplits, sep=""))
+  textureResultsDf <- dplyr::select(testData, same, all_of(designNames))
 
   for (m in c(1:nrow(copyTemplate))) {
     statsInd <- which(c(copyTemplate[m,c("acm", "cmc", "pmc", "prc")])==1)

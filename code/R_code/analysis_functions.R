@@ -144,8 +144,10 @@ make_task_textures <- function(inputData, nRep){
     sameStats <- as_tibble(splitData[[as.character(quadrants[1])]] -
                            splitData[[as.character(quadrants[2])]]) %>%
       abs(.)
-    sameCond <- data.frame(texture1 = unique(inputData$texture),
-                           texture2 = unique(inputData$texture), same = 1)
+    sameCond <- data.frame(texture1=unique(inputData$texture),
+                           texture2=unique(inputData$texture), same=1,
+                           quadrant1=quadrants[1],
+                           quadrant2=quadrants[2])
     sameDf <- rbind(sameDf, cbind(sameCond, sameStats)) %>%
       as_tibble(.)
   }
@@ -155,16 +157,17 @@ make_task_textures <- function(inputData, nRep){
   diffDf <- data.frame()
   for (n in c(1:nRep)) {
     sampleQuadrant <- sample(unique(inputData$quadrant), 1)
-    # substract the statistics
-    reducedDf <- dplyr::filter(inputData, quadrant == sampleQuadrant)
+    # generate the arrangement of rows to substract
+    reducedDf <- dplyr::filter(inputData, quadrant==sampleQuadrant)
     scrambledDf <- reducedDf[diffSorts[[n]],]  
     # put statistics and condition info into a dataframe
     reducedStats <- dplyr::select(reducedDf, -texture, -quadrant)
     scrambledStats <- dplyr::select(scrambledDf, -texture, -quadrant)
     diffStats <- (reducedStats - scrambledStats) %>%
       abs(.)
-    diffCond <- data.frame(texture1 = unique(reducedDf$texture),
-                           texture2 = unique(scrambledDf$texture), same = 0)
+    diffCond <- data.frame(texture1=unique(reducedDf$texture),
+                           texture2=unique(scrambledDf$texture), same=0,
+                           quadrant1=sampleQuadrant, quadrant2=sampleQuadrant)
     diffDf <- rbind(diffDf, cbind(diffCond, diffStats))
   }
   # put same and different dataframes together   
@@ -228,7 +231,7 @@ compute_angles <- function(inputData){
 # Generate a list with the prepared data to train and test a model
 prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
                              balanceWeights=TRUE, subsetsPCA=NA,
-                             labelColumn="same") {
+                             labelColumn="same", varianceRetained=0.95) {
   # calculate weights to even out classes
   weights <- rep(1, nrow(trainData))
   if (balanceWeights) {
@@ -253,7 +256,7 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
   testStats <- as.data.frame(normalizedStats$test)
   # If required, do PCA
   if (!is.na(subsetsPCA[1])) {
-    pcaStats <- subset_statsPCA(trainStats, testStats, subsetsPCA)
+    pcaStats <- subset_statsPCA(trainStats, testStats, subsetsPCA, varianceRetained)
     trainStats <- pcaStats$trainPCA
     testStats <- pcaStats$testPCA
   }
@@ -269,14 +272,15 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
 
 # Train a ridge regression model on given train and test data.
 train_test_ridge <- function(trainData, testData, statsToUse=NA,
-                             balanceWeights = TRUE, subsetsPCA=NA,
-                             labelColumn="same") {
+                             balanceWeights=TRUE, subsetsPCA=NA,
+                             labelColumn="same", varianceRetained=0.95) {
   preparedData <- prepare_data_fit_test(trainData=trainData,
                                         testData=testData,
                                         statsToUse=statsToUse,
                                         balanceWeights=balanceWeights,
                                         subsetsPCA=subsetsPCA,
-                                        labelColumn=labelColumn)
+                                        labelColumn=labelColumn,
+                                        varianceRetained=varianceRetained)
   # fit the model
   modelFit <- cv.glmnet(x = as.matrix(preparedData$trainStats),
                        y = preparedData$trainLabel,
@@ -294,11 +298,11 @@ train_test_ridge <- function(trainData, testData, statsToUse=NA,
   referenceLabels <- factor(preparedData$testLabel, levels=c("0","1"))
   confusionMatrix <- caret::confusionMatrix(factor(modelPredictions),
                                                      referenceLabels)
-  modelOutput <- list(predictions = modelPredictions,
-                      accuracy = predictionOutcome,
-                      correctPredictions = correctPredictions,
-                      confusionMatrix = confusionMatrix,
-                      modelResponses = modelResponses)
+  modelOutput <- list(predictions=modelPredictions,
+                      accuracy=predictionOutcome,
+                      correctPredictions=correctPredictions,
+                      confusionMatrix=confusionMatrix,
+                      modelResponses=modelResponses)
   return(modelOutput)
 }
 
