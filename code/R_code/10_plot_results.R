@@ -558,7 +558,8 @@ assign_subset_name_plot <- function(FAS, acm, cmc, pmc, prc) {
   return(name)
 }
 
-subsetsFile <- "../../data/BSD_results/8_subset_stats_performance_FAS.RDS"
+#subsetsFile <- "../../data/BSD_results/8_subset_stats_performance.RDS"
+subsetsFile <- "../../data/texture_results/8_subset_stats_performance_texture.RDS"
 subsetsDf <- readRDS(subsetsFile) %>%
   dplyr::mutate(., statsName=assign_subset_name_plot(FAS, acm, cmc, pmc, prc),
                 error=1-performance, numberSubsets=FAS+acm+cmc+pmc+prc)
@@ -568,50 +569,94 @@ subsetsSummary <- group_by(subsetsDf, statsName, FAS, acm, cmc, pmc, prc, number
   dplyr::mutate(., numberSubsets=factor(numberSubsets))
 subsetsSummary <- subsetsSummary[order(subsetsSummary$numberSubsets),]
 
-fullModelVals <- dplyr::filter(subsetsSummary, numberSubsets %in% c(1,5))$meanError
+spectralPerformance <- dplyr::filter(subsetsSummary, numberSubsets==1 & FAS==1)[["meanError"]]
+fullModelPerformance <- dplyr::filter(subsetsSummary, numberSubsets==5)[["meanError"]]
 
-addedSubsetsDf <- dplyr::filter(subsetsSummary, numberSubsets %in% c(2))
-addedSubsetsDf$statsName <- sub("Spectral_", "+ ", addedSubsetsDf$statsName )
-
-subsetsPlot <- addedSubsetsDf %>%
-  ggplot(data=., aes(x=statsName, y=meanError*100)) +
-  geom_bar(stat="identity", width = 0.5) +
-  geom_errorbar(aes(ymin=(meanError-sdError*2)*100,
-                    ymax=(meanError+sdError*2)*100), width=0.1) +
-  geom_hline(yintercept=fullModelVals[1]*100, color="#2691d4", linetype=2) +
-  geom_hline(yintercept=fullModelVals[2]*100, color="#ba2229", linetype=2) +
-  ylab("Error rate (%)") +
-  xlab("Statistics used") +
-  ylim(c(0, 18)) +
-  theme_bw()
-
-subsetsPlotName <- paste(plottingDir, "subsetsPlot_added.png", sep="")
-ggsave(subsetsPlotName, subsetsPlot, width = 10, height = 7, units = "cm") 
-
-removedSubsetsDf <- dplyr::filter(subsetsSummary, numberSubsets %in% c(4))
+# filter data of interest
+singleStats <- dplyr::filter(subsetsSummary, numberSubsets==1 & FAS==0)
+addedStats <- dplyr::filter(subsetsSummary, numberSubsets==2 & FAS==1)
+removedStats <- dplyr::filter(subsetsSummary, numberSubsets==4 & FAS==1)
+# put friendlier names
+addedStats$statsName <- sub("Spectral_", "+ ", addedStats$statsName)
 statsNames <- c("Space", "Orientation", "Scale", "Phase")
 indVec <- NULL
 nameVec <- NA
 for (sN in statsNames) {
-  ind <- which(!(c(1:4) %in% grep(sN, removedSubsetsDf$statsName)))
+  ind <- which(!(c(1:4) %in% grep(sN, removedStats$statsName)))
   nameVec[ind] <- sN
 }
-removedSubsetsDf$statsName <- paste("-", nameVec)
+removedStats$statsName <- paste("-", nameVec)
 
-subsetsPlot2 <- removedSubsetsDf %>%
+#plotLims <- c(0, 38)
+#plotLims <- c(0, 31)
+singleStatsPlot <- singleStats %>%
   ggplot(data=., aes(x=statsName, y=meanError*100)) +
-  geom_bar(stat="identity", width = 0.5) +
-  geom_errorbar(aes(ymin=(meanError-sdError*2)*100,
-                    ymax=(meanError+sdError*2)*100), width=0.1) +
-  geom_hline(yintercept=fullModelVals[1]*100, color="#2691d4", linetype=2) +
-  geom_hline(yintercept=fullModelVals[2]*100, color="#ba2229", linetype=2) +
+  geom_bar(stat="identity", width=0.5) +
+#  geom_errorbar(aes(ymin=(meanError-sdError*2)*100,
+#                    ymax=(meanError+sdError*2)*100), width=0.1) +
+  geom_hline(yintercept=spectralPerformance*100, color="#2691d4", linetype=2) +
+  geom_hline(yintercept=fullModelPerformance*100, color="#ba2229", linetype=2) +
   ylab("Error rate (%)") +
   xlab("Statistics used") +
-  ylim(c(0, 18)) +
-  theme_bw()
+#  ylim(plotLims) +
+  ggtitle("Subsets alone") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust=0.5),
+        axis.text.x = element_text(angle=30, vjust=0.8, hjust=0.8),
+        axis.title.x = element_blank(),
+        title = element_text(size=8)) +
+  xlab("") +
+  NULL
 
-subsetsPlotName2 <- paste(plottingDir, "subsetsPlot_removed.png", sep="")
-ggsave(subsetsPlotName2, subsetsPlot2, width = 10, height = 7, units = "cm") 
+addedStatsPlot <- addedStats %>%
+  ggplot(data=., aes(x=statsName, y=meanError*100)) +
+  geom_bar(stat="identity", width = 0.5) +
+#  geom_errorbar(aes(ymin=(meanError-sdError*2)*100,
+#                    ymax=(meanError+sdError*2)*100), width=0.1) +
+  geom_hline(yintercept=spectralPerformance*100, color="#2691d4", linetype=2) +
+  geom_hline(yintercept=fullModelPerformance*100, color="#ba2229", linetype=2) +
+  ylab("Error rate (%)") +
+  xlab("Statistics used") +
+  #ylim(plotLims) +
+  ggtitle("Spectral +subsets") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle=30, vjust=0.8, hjust=0.8),
+        axis.title.x = element_blank(),
+        title = element_text(size=8)) +
+  xlab("") +
+  NULL
+
+removedStatsPlot <- removedStats %>%
+  ggplot(data=., aes(x=statsName, y=meanError*100)) +
+  geom_bar(stat="identity", width = 0.5) +
+#  geom_errorbar(aes(ymin=(meanError-sdError*2)*100,
+#                    ymax=(meanError+sdError*2)*100), width=0.1) +
+  geom_hline(yintercept=spectralPerformance*100, color="#2691d4", linetype=2) +
+  geom_hline(yintercept=fullModelPerformance*100, color="#ba2229", linetype=2) +
+  ylab("Error rate (%)") +
+  xlab("Statistics used") +
+  #ylim(plotLims) +
+  ggtitle("Full model -subsets") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle=30, vjust=0.8, hjust=0.8),
+        axis.title.x = element_blank(),
+        title = element_text(size=8)) +
+  xlab("") +
+  NULL
+
+allPlots <- ggpubr::ggarrange(plotlist=list(singleStatsPlot, addedStatsPlot,
+                                            removedStatsPlot), nrow=1, common.legend=FALSE,
+  labels=list("(A)", "(B)", "(C)"))
+
+subsetsPlotName <- paste(plottingDir, "8_subsets_BSD.png", sep="")
+#subsetsPlotName <- paste(plottingDir, "8_subsets_texture.png", sep="")
+ggsave(subsetsPlotName, allPlots, width=16, height=6, units="cm") 
+
+# pairwise subsets
+singlesSummary <- dplyr::filter(subsetsSummary, numberSubsets==1 & FAS==0)
+pairsSummary <- dplyr::filter(subsetsSummary, numberSubsets==2 & FAS==0)
 
 ######################################
 ##### 9 Experiment results  ##########
@@ -696,5 +741,4 @@ experimentFASHOSAgreementPlot <- ggplot(expDataFull, aes(x=estimate, y=act_bette
   geom_errorbar(aes(ymin=act_better_FASHOS-2*act_better_FASHOS_sd,
                     ymax=act_better_FASHOS+2*act_better_FASHOS_sd)) +
   geom_errorbarh(aes(xmin=conf.low, xmax=conf.high))
-
 
