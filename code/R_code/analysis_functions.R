@@ -252,7 +252,7 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
   trainStats <- dplyr::select(trainData, all_of(statsToUse))
   testStats <- dplyr::select(testData, all_of(statsToUse))
   # Normalize the statistics
-  if (normalizeData)
+  if (normalizeData) {
     normalizedStats <- normalize_data(trainStats=trainStats, testStats=testStats)
     trainStats <- as.data.frame(normalizedStats$train)
     testStats <- as.data.frame(normalizedStats$test)
