@@ -5,14 +5,15 @@ source("./analysis_functions.R")
 set.seed(2691)
 
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/4_BSD_dnn.Rds"
-saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_history.Rds"
+saveResults <- "../../data/BSD_results/4_BSD_dnn_noNorm.Rds"
+saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_history_noNorm.Rds"
 
 repExp <- 20
 layerUnits <- c(30)
-regularizationWeight <- 0.002
-epochs <- 200
+regularizationWeight <- 0.01
+epochs <- 300
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
+normalizeData <- FALSE
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -86,7 +87,8 @@ for (r in 1:repExp) {
                      subsetsPCA=pcaStatsSubsets,
                      layerUnits=layerUnits,
                      regularizationWeight=regularizationWeight,
-                     epochs=epochs)
+                     epochs=epochs,
+                     normalizeData=normalizeData)
     copyTemplate$performance[m] <- modelOutcome$accuracy
     progressText <- paste("Rep:", r, "  Architecture:", archString,
                           "  RegW:", regularizationWeight, "  Epochs:", epochs,
