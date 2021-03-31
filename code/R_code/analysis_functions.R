@@ -231,7 +231,8 @@ compute_angles <- function(inputData){
 # Generate a list with the prepared data to train and test a model
 prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
                              balanceWeights=TRUE, subsetsPCA=NA,
-                             labelColumn="same", varianceRetained=0.95) {
+                             labelColumn="same", varianceRetained=0.95,
+                             normalizeData=TRUE) {
   # calculate weights to even out classes
   weights <- rep(1, nrow(trainData))
   if (balanceWeights) {
@@ -251,9 +252,11 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
   trainStats <- dplyr::select(trainData, all_of(statsToUse))
   testStats <- dplyr::select(testData, all_of(statsToUse))
   # Normalize the statistics
-  normalizedStats <- normalize_data(trainStats=trainStats, testStats=testStats)
-  trainStats <- as.data.frame(normalizedStats$train)
-  testStats <- as.data.frame(normalizedStats$test)
+  if (normalizeData)
+    normalizedStats <- normalize_data(trainStats=trainStats, testStats=testStats)
+    trainStats <- as.data.frame(normalizedStats$train)
+    testStats <- as.data.frame(normalizedStats$test)
+  }
   # If required, do PCA
   if (!is.na(subsetsPCA[1])) {
     pcaStats <- subset_statsPCA(trainStats, testStats, subsetsPCA, varianceRetained)
@@ -273,14 +276,16 @@ prepare_data_fit_test <- function(trainData, testData, statsToUse=NA,
 # Train a ridge regression model on given train and test data.
 train_test_ridge <- function(trainData, testData, statsToUse=NA,
                              balanceWeights=TRUE, subsetsPCA=NA,
-                             labelColumn="same", varianceRetained=0.95) {
+                             labelColumn="same", varianceRetained=0.95,
+                             normalizeData=TRUE) {
   preparedData <- prepare_data_fit_test(trainData=trainData,
                                         testData=testData,
                                         statsToUse=statsToUse,
                                         balanceWeights=balanceWeights,
                                         subsetsPCA=subsetsPCA,
                                         labelColumn=labelColumn,
-                                        varianceRetained=varianceRetained)
+                                        varianceRetained=varianceRetained,
+                                        normalizeData=normalizeData)
   # fit the model
   modelFit <- cv.glmnet(x = as.matrix(preparedData$trainStats),
                        y = preparedData$trainLabel,
@@ -336,10 +341,19 @@ make_dnn_model <- function(layerUnits, inputShape, regularizationWeight) {
 train_test_dnn <- function(trainData, testData, statsToUse=NA,
                            balanceWeights=TRUE, subsetsPCA=NA,
                            layerUnits=c(30,10), regularizationWeight=0.002,
-                           epochs=200) {
+                           epochs=200, labelColumn="same",
+                           varianceRetained=0.95, normalizeData=TRUE) {
+  preparedData <- prepare_data_fit_test(trainData=trainData,
+                                        testData=testData,
+                                        statsToUse=statsToUse,
+                                        balanceWeights=balanceWeights,
+                                        subsetsPCA=subsetsPCA,
+                                        labelColumn=labelColumn,
+                                        varianceRetained=varianceRetained,
+                                        normalizeData=normalizeData)
   preparedData <- prepare_data_fit_test(trainData, testData,
                                         statsToUse, balanceWeights,
-                                        subsetsPCA)
+                                        subsetsPCA, normalizeData)
   modelDNN <- make_dnn_model(layerUnits, ncol(preparedData$trainStats),
                              regularizationWeight)
   # move sample weights to python

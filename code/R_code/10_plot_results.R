@@ -188,7 +188,7 @@ ggsave(texturePlotName, textureDNNPlot2, width=10, height=7, units = "cm")
 #############################
 #############################
 
-bsdFile <- "../../data/BSD_results/3_BSD_results_PCA_subsetted_60.RDS"
+bsdFile <- "../../data/BSD_results/3_BSD_results.RDS"
 bsdRes <- readRDS(bsdFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
                 error=1-performance)
@@ -304,89 +304,89 @@ ggsave(bsdDNNPlotName, bsdDNNPlot2, width=10, height=7, units="cm")
 ##################################
 ##################################
 
-bsdDNNFile <- "../../data/BSD_results/4_BSD_dnn_params.Rds"
-bsdDNNRes <- readRDS(bsdDNNFile) %>%
-  dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
-                error=1-performance)
-bsdDNNRes$statsName <- factor(bsdDNNRes$statsName,
-                               levels=c("Pix", "Pix-Spectral",
-                                        "Pix-HOS", "Pix-Spectral-HOS",
-                                        "Spectral", "HOS", "Spectral-HOS"))
-
-bsdDNNPerformanceSummary <- group_by(bsdDNNRes, statsName, pixel,
-                                     architecture, regularization, epochs) %>%
-  summarize(., meanError=mean(error), sdError=sd(error), count=n())
-
-# compare performance of NN to linear model
-linearSpectralHOS <- dplyr::filter(bsdPerformanceSummary,
-                                   statsName=="Pix-Spectral-HOS")[["meanError"]]
-
-performanceDiff <- dplyr::filter(bsdDNNPerformanceSummary,
-                                 statsName=="Pix-Spectral-HOS") %>%
-  dplyr::mutate(., errorDiff=linearSpectralHOS-meanError)
-
-bestFASHOS <- performanceDiff[which.min(performanceDiff$errorDiff),]
-
-
-#### compare NN regimes
-allEpochs <- unique(bsdDNNRes$epochs)
-allReguls <- unique(bsdDNNRes$regularization)
-bsdDNNParPlot <- list()
-bsdDNNParPlot2 <- list()
-for (ep in c(1:length(allEpochs))) {
-  bsdDNNParPlot[[ep]] <- list()
-  bsdDNNParPlot2[[ep]] <- list()
-  for (reg in c(1:length(allReguls))) {
-    bsdDNNParPlot[[ep]][[reg]] <- dplyr::filter(bsdDNNRes, pixel==1,
-                                       epochs==allEpochs[ep] &
-                                         regularization==allReguls[reg]) %>%
-      droplevels(.) %>%
-      ggplot(aes(x=statsName, y=error*100, color=statsName)) +
-      geom_jitter(width=0.2, height=0, alpha=0.5, shape=1) +
-      scale_color_manual(name = "Statistic groups",
-                           values = c("#000000", "#2691d4", "#b400e5", "#ba2229"),
-                         guide = "none") +
-      stat_summary(fun = "mean") +
-      ylim(0, 30) +
-      theme_bw() +
-      facet_wrap(facets=c("architecture", "regularization")) +
-      theme(panel.border = element_blank(),
-            axis.line.x = element_line(size=0.5, linetype="solid"),
-            axis.line.y = element_line(size=0.5, linetype="solid")) +
-      ylab("Error rate (%)") +
-      scale_x_discrete(name = "Parameters",
-                       labels = c("Pix", "Pix-Spectral", "Pix-HOS",
-                                  "Pix-Spectral-HOS"))
-    bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_param_", 
-                            allEpochs[ep], "_", allReguls[reg],
-                            ".png", sep="")
-    ggsave(bsdDNNPlotName, bsdDNNParPlot[[ep]][[reg]],
-           width=20, height=14, units = "cm") 
-    bsdDNNParPlot2[[ep]][[reg]] <- dplyr::filter(bsdDNNRes, pixel==0,
-                                       epochs==allEpochs[ep] &
-                                         regularization==allReguls[reg]) %>%
-      droplevels(.) %>%
-      ggplot(aes(x=statsName, y=error*100, color=statsName)) +
-      geom_jitter(width=0.2, height=0, alpha=0.5, shape=1) +
-      scale_color_manual(name = "Statistic groups",
-                           values = c("#2691d4", "#b400e5", "#ba2229"),
-                         guide = "none") +
-      stat_summary(fun = "mean") +
-      ylim(0, 30) +
-      theme_bw() +
-      facet_wrap(facets=c("architecture", "regularization")) +
-      theme(panel.border = element_blank(),
-            axis.line.x = element_line(size=0.5, linetype="solid"),
-            axis.line.y = element_line(size=0.5, linetype="solid")) +
-      ylab("Error rate (%)") +
-      scale_x_discrete(name = "Parameters")
-    bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_param_", 
-                            allEpochs[ep], "_", allReguls[reg],
-                            "_noPix.png", sep="")
-    ggsave(bsdDNNPlotName, bsdDNNParPlot2[[ep]][[reg]],
-           width=20, height=14, units="cm") 
-  }
-}
+#bsdDNNFile <- "../../data/BSD_results/4_BSD_dnn_params.Rds"
+#bsdDNNRes <- readRDS(bsdDNNFile) %>%
+#  dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
+#                error=1-performance)
+#bsdDNNRes$statsName <- factor(bsdDNNRes$statsName,
+#                               levels=c("Pix", "Pix-Spectral",
+#                                        "Pix-HOS", "Pix-Spectral-HOS",
+#                                        "Spectral", "HOS", "Spectral-HOS"))
+#
+#bsdDNNPerformanceSummary <- group_by(bsdDNNRes, statsName, pixel,
+#                                     architecture, regularization, epochs) %>%
+#  summarize(., meanError=mean(error), sdError=sd(error), count=n())
+#
+## compare performance of NN to linear model
+#linearSpectralHOS <- dplyr::filter(bsdPerformanceSummary,
+#                                   statsName=="Pix-Spectral-HOS")[["meanError"]]
+#
+#performanceDiff <- dplyr::filter(bsdDNNPerformanceSummary,
+#                                 statsName=="Pix-Spectral-HOS") %>%
+#  dplyr::mutate(., errorDiff=linearSpectralHOS-meanError)
+#
+#bestFASHOS <- performanceDiff[which.min(performanceDiff$errorDiff),]
+#
+#
+##### compare NN regimes
+#allEpochs <- unique(bsdDNNRes$epochs)
+#allReguls <- unique(bsdDNNRes$regularization)
+#bsdDNNParPlot <- list()
+#bsdDNNParPlot2 <- list()
+#for (ep in c(1:length(allEpochs))) {
+#  bsdDNNParPlot[[ep]] <- list()
+#  bsdDNNParPlot2[[ep]] <- list()
+#  for (reg in c(1:length(allReguls))) {
+#    bsdDNNParPlot[[ep]][[reg]] <- dplyr::filter(bsdDNNRes, pixel==1,
+#                                       epochs==allEpochs[ep] &
+#                                         regularization==allReguls[reg]) %>%
+#      droplevels(.) %>%
+#      ggplot(aes(x=statsName, y=error*100, color=statsName)) +
+#      geom_jitter(width=0.2, height=0, alpha=0.5, shape=1) +
+#      scale_color_manual(name = "Statistic groups",
+#                           values = c("#000000", "#2691d4", "#b400e5", "#ba2229"),
+#                         guide = "none") +
+#      stat_summary(fun = "mean") +
+#      ylim(0, 30) +
+#      theme_bw() +
+#      facet_wrap(facets=c("architecture", "regularization")) +
+#      theme(panel.border = element_blank(),
+#            axis.line.x = element_line(size=0.5, linetype="solid"),
+#            axis.line.y = element_line(size=0.5, linetype="solid")) +
+#      ylab("Error rate (%)") +
+#      scale_x_discrete(name = "Parameters",
+#                       labels = c("Pix", "Pix-Spectral", "Pix-HOS",
+#                                  "Pix-Spectral-HOS"))
+#    bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_param_", 
+#                            allEpochs[ep], "_", allReguls[reg],
+#                            ".png", sep="")
+#    ggsave(bsdDNNPlotName, bsdDNNParPlot[[ep]][[reg]],
+#           width=20, height=14, units = "cm") 
+#    bsdDNNParPlot2[[ep]][[reg]] <- dplyr::filter(bsdDNNRes, pixel==0,
+#                                       epochs==allEpochs[ep] &
+#                                         regularization==allReguls[reg]) %>%
+#      droplevels(.) %>%
+#      ggplot(aes(x=statsName, y=error*100, color=statsName)) +
+#      geom_jitter(width=0.2, height=0, alpha=0.5, shape=1) +
+#      scale_color_manual(name = "Statistic groups",
+#                           values = c("#2691d4", "#b400e5", "#ba2229"),
+#                         guide = "none") +
+#      stat_summary(fun = "mean") +
+#      ylim(0, 30) +
+#      theme_bw() +
+#      facet_wrap(facets=c("architecture", "regularization")) +
+#      theme(panel.border = element_blank(),
+#            axis.line.x = element_line(size=0.5, linetype="solid"),
+#            axis.line.y = element_line(size=0.5, linetype="solid")) +
+#      ylab("Error rate (%)") +
+#      scale_x_discrete(name = "Parameters")
+#    bsdDNNPlotName <- paste(plottingDir, "bsdDNNPlot_param_", 
+#                            allEpochs[ep], "_", allReguls[reg],
+#                            "_noPix.png", sep="")
+#    ggsave(bsdDNNPlotName, bsdDNNParPlot2[[ep]][[reg]],
+#           width=20, height=14, units="cm") 
+#  }
+#}
 
 ###################################################
 ###################################################
@@ -396,41 +396,64 @@ for (ep in c(1:length(allEpochs))) {
 dnnHistFile <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
 dnnHistoryList <- readRDS(dnnHistFile)
 
-architectures <- names(dnnHistoryList)
-statsNames <- names(dnnHistoryList[[1]])
+history1 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_1.Rds")
+history2 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_2.Rds")
+history3 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_3_reg01.Rds")
+history4 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_4_reg01.Rds")
+history5 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_5_reg001.Rds")
+history6 <- readRDS("../../data/BSD_results/4_BSD_dnn_params_history_6_reg01_stats.Rds")
 
-historyDf <- data.frame()
-for (arch in architectures) {
-  for (sn in statsNames) {
-    errorMeans <- 1-(colMeans(dnnHistoryList[[arch]][[sn]]))
-    errorSd <- sqrt(colVars(dnnHistoryList[[arch]][[sn]]))
-    tempDf <- data.frame(architecture=arch, stats=sn,
-                         epoch=c(1:length(errorMeans)),
-                         error=errorMeans, sd=errorSd)
-    historyDf <- rbind(historyDf, tempDf)
+historyList <- list(history1, history2, history3, history4, history5, history6)
+historyDfList <- list()
+for (l in c(1:length(historyList))) {
+  architectures <- names(historyList[[l]])
+  statsNames <- names(historyList[[l]][[1]])
+  historyDf <- data.frame()
+  for (arch in architectures) {
+    for (sn in statsNames) {
+      errorMeans <- 1-(colMeans(historyList[[l]][[arch]][[sn]]))
+      errorSd <- sqrt(colVars(historyList[[l]][[arch]][[sn]]))
+      tempDf <- data.frame(architecture=arch, stats=sn,
+                           epoch=c(1:length(errorMeans)),
+                           error=errorMeans, sd=errorSd)
+      historyDf <- rbind(historyDf, tempDf)
+    }
   }
+  historyDfList[[l]] <- historyDf
 }
+# add the regularization of each run
+historyDfList[[1]]$reg <- 0.003
+historyDfList[[2]]$reg <- 0.003
+historyDfList[[3]]$reg <- 0.01
+historyDfList[[4]]$reg <- 0.01
+historyDfList[[5]]$reg <- 0.001
+# bind all together
+historyDf <- rbind(historyDfList[[1]], historyDfList[[2]],
+                   historyDfList[[3]], historyDfList[[4]],
+                   historyDfList[[5]])
 
 # Plot the performance progression
 linearHOS <- dplyr::filter(bsdPerformanceSummary,
                            statsName=="Pix-HOS")[["meanError"]]
-historyPlot_HOS <- dplyr::filter(historyDf, stats=="Pix_HOS") %>%
+historyPlot_HOS <- dplyr::filter(historyDf, stats=="Pix_HOS" & reg==0.001) %>%
   ggplot(., aes(x=epoch, y=error*100, color=architecture)) +
+  #facet_grid(~reg) +
   geom_line() +
-  ylab("Error") +
+  ylab("Validation error rate (%)") +
   xlab("Epoch") +
   theme_bw() +
-  ylim(c(0, 50)) +
+  ylim(c(0, 60)) +
+  labs(color="Architecture") +
   geom_hline(yintercept=linearHOS*100, linetype=2)
-
 dnnHistoryPlotName <- paste(plottingDir, "4_NNhistoryPlot_HOS.png", sep="")
-ggsave(dnnHistoryPlotName, historyPlot_HOS, width=10, height=7, units="cm") 
+ggsave(dnnHistoryPlotName, historyPlot_HOS, width=12, height=9, units="cm") 
 
 # Plot the performance progression
 linearFASHOS <- dplyr::filter(bsdPerformanceSummary,
                            statsName=="Pix-Spectral-HOS")[["meanError"]]
 historyPlot_FASHOS <- dplyr::filter(historyDf, stats=="Pix_FAS_HOS") %>%
   ggplot(., aes(x=epoch, y=error*100, color=architecture)) +
+  facet_grid(~reg) +
   geom_line() +
   ylab("Error") +
   xlab("Epoch") +
@@ -440,27 +463,60 @@ historyPlot_FASHOS <- dplyr::filter(historyDf, stats=="Pix_FAS_HOS") %>%
 dnnHistoryPlotName <- paste(plottingDir, "4_NNhistoryPlot_FASHOS.png", sep="")
 ggsave(dnnHistoryPlotName, historyPlot_FASHOS, width=10, height=7, units="cm") 
 
+dnnPlotBSD <- ggpubr::ggarrange(plotlist=list(historyPlot_HOS, bsdDNNPlot),
+                                nrow=1, common.legend=FALSE,
+                                labels=list("(A)", "(B)"))
+
+dnnFigPlotName <- paste(plottingDir, "4_dnn_duplex.png", sep="")
+ggsave(dnnFigPlotName, dnnPlotBSD, width=19, height=7.5, units="cm") 
+
+# Plot for one architecture, all the statistics progression
+#linearFASHOS <- dplyr::filter(bsdPerformanceSummary, )[["meanError"]]
+historyPlot_allStats <- dplyr::filter(historyDfList[[6]]) %>%
+  ggplot(., aes(x=epoch, y=error*100, color=stats, linetype=architecture)) +
+  #facet_grid(~reg) +
+  geom_line() +
+  ylab("Error") +
+  xlab("Epoch") +
+  theme_bw() +
+  ylim(c(0, 50)) +
+#  geom_hline(yintercept=linearFASHOS*100, linetype=2)
+  NULL
+
+dnnHistoryPlotName <- paste(plottingDir, "4_NNhistoryPlot_FASHOS.png", sep="")
+ggsave(dnnHistoryPlotName, historyPlot_FASHOS, width=10, height=7, units="cm") 
 
 ##################################
 ##################################
 ##### 6 analyze agreement ########
 ##################################
 ##################################
-#agreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
-agreementFile <- "../../data/texture_results/6_classification_agreement_textures.Rds"
-agreementDf <- readRDS(agreementFile)
+
+agreementFile <- "../../data/BSD_results/6_classification_agreement.Rds"
+#agreementFile <- "../../data/texture_results/6_classification_agreement_textures.Rds"
+agreementDf <- readRDS(agreementFile) %>%
+  dplyr::mutate(., errorAgreementHOS=wrongHOS*wrongFAS,
+                   errorAgreementFASHOS=wrongFASHOS*wrongHOS)
 
 agreementSel <- dplyr::select(agreementDf, same, betterHOS, betterFASHOS,
-                              wrongFAS) %>%
-  tidyr::pivot_longer(., cols=c("betterHOS", "betterFASHOS", "wrongFAS"),
+                              wrongFAS, errorAgreementHOS, errorAgreementFASHOS,
+                              wrongHOS, wrongFASHOS) %>%
+  tidyr::pivot_longer(., cols=c("betterHOS", "betterFASHOS", "wrongFAS",
+                                "errorAgreementHOS", "errorAgreementFASHOS",
+                                "wrongHOS", "wrongFASHOS"),
                       names_to="comparison", values_to="result")
+
+agreementSummaryCoarse1 <- agreementSel %>%
+  group_by(., comparison) %>% 
+  summarize(., proportion=mean(result))
 
 agreementSummaryCoarse <- agreementSel %>%
   group_by(., comparison) %>% 
   summarize(., proportion=mean(result)) %>%
+  dplyr::filter(., comparison %in% c("betterHOS", "betterFASHOS", "wrongFAS") %>%
   dplyr::mutate(., comparison=factor(comparison,
                                        levels=c("betterHOS", "betterFASHOS",
-                                                "wrongFAS"),
+                                                "wrongFAS")
                                        labels=c("HOS", "Spectral-HOS",
                                                 "Bad-Spectral")))
 
@@ -661,24 +717,23 @@ pairsSummary <- dplyr::filter(subsetsSummary, numberSubsets==2 & FAS==0)
 ######################################
 ##### 9 Experiment results  ##########
 ######################################
+
 expResultsFile <- "../../data/experiment_stats/experimentResults.RDS"
 expSegmentationFile <- "../../data/BSD_results/9_segmentation_predictions.RDS"
 expAgreementFile <- "../../data/BSD_results/9_better_stats_predictions.RDS"
+#expSegmentationFile <- "../../data/texture_results/9_segmentation_predictions_texture.RDS"
+#expAgreementFile <- "../../data/texture_results/9_better_stats_predictions_texture.RDS"
 
 expResults <- readRDS(expResultsFile) %>%
   as_tibble(.)
-
 expSeg <- readRDS(expSegmentationFile) %>%
   as_tibble(.)
 
 summaryExpSeg <- group_by(expSeg, texture) %>%
-  summarize(., mean_same_FAS=mean(same_FAS),
-            mean_same_HOS=mean(same_HOS),
+  summarize(., mean_same_HOS=mean(same_HOS),
             mean_same_FASHOS=mean(same_FASHOS),
-            act_diff_FAS=-mean(activation_FAS),
             act_diff_HOS=-mean(activation_HOS),
             act_diff_FASHOS=-mean(activation_FASHOS),
-            act_diff_FAS_sd=sd(activation_FAS)/sqrt(n()),
             act_diff_HOS_sd=sd(activation_HOS)/sqrt(n()),
             act_diff_FASHOS_sd=sd(activation_FASHOS)/sqrt(n()))
 
@@ -696,49 +751,69 @@ summaryExpAgreement <- group_by(expAgreement, texture) %>%
 # put all the data together
 expDataFull <- merge(expResults, summaryExpSeg, by="texture") %>%
   merge(., summaryExpAgreement, by="texture") %>%
-  dplyr::mutate(., texture=factor(texture, labels=c("T1", "T2", "T3", "T4")),
-                estimate=-estimate, conf.low=-conf.low, conf.high=-conf.high)
+  dplyr::mutate(., estimate=-estimate, conf.low=-conf.low, conf.high=-conf.high) %>%
+  dplyr::rename(., Texture=texture)
+  
+                #texture=factor(texture, labels=c("T1", "T2", "T3", "T4")),
+                
 
 experimentHOSSegPlot <- ggplot(expDataFull, aes(x=estimate, y=act_diff_HOS,
-                                                color=texture)) +
+                                                color=Texture)) +
   geom_point() +
   geom_errorbar(aes(ymin=act_diff_HOS-2*act_diff_HOS_sd,
-                    ymax=act_diff_HOS+2*act_diff_HOS_sd)) +
-  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high)) +
+                    ymax=act_diff_HOS+2*act_diff_HOS_sd), size=1, width=0) +
+  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high), size=1, height=0) +
   xlab("Experimental HOS segmentation") +
-  ylab("Activation of segmentation model") +
+  ylab("Model segmentation (linear activation)") +
   theme_bw() +
   NULL
-experimentPlotName <- paste(plottingDir, "experimentModel_HOS.png", sep="")
-ggsave(experimentPlotName, experimentHOSSegPlot, width=12, height=9, units = "cm") 
 
 experimentFASHOSSegPlot <- ggplot(expDataFull, aes(x=estimate, y=act_diff_FASHOS,
-                                                color=texture)) +
+                                                color=Texture)) +
   geom_point() +
   geom_errorbar(aes(ymin=act_diff_FASHOS-2*act_diff_FASHOS_sd,
-                    ymax=act_diff_FASHOS+2*act_diff_FASHOS_sd)) +
-  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high)) +
+                    ymax=act_diff_FASHOS+2*act_diff_FASHOS_sd), size=1, width=0) +
+  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high), size=1, height=0) +
   xlab("Experimental HOS segmentation") +
-  ylab("Activation of model segmentation") +
+  ylab("Model segmentation (linear activation)") +
   theme_bw() +
   NULL
-experimentPlotName <- paste(plottingDir, "experimentModel_FASHOS.png", sep="")
-ggsave(experimentPlotName, experimentFASHOSSegPlot, width=12, height=9, units = "cm") 
 
 experimentHOSAgreementPlot <- ggplot(expDataFull, aes(x=estimate, y=act_better_HOS,
-                                                color=texture)) +
+                                                color=Texture)) +
   geom_point() +
   geom_errorbar(aes(ymin=act_better_HOS-2*act_better_HOS_sd,
-                    ymax=act_better_HOS+2*act_better_HOS_sd)) +
-  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high)) +
+                    ymax=act_better_HOS+2*act_better_HOS_sd), size=1, width=0) +
+  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high), size=1, height=0) +
   xlab("Experimental HOS segmentation") +
-  ylab("Activation of HOS improvement classifier") +
+  ylab("HOS usefulness (linear activation)") +
   theme_bw()
 
 experimentFASHOSAgreementPlot <- ggplot(expDataFull, aes(x=estimate, y=act_better_FASHOS,
-                                                color=texture)) +
+                                                color=Texture)) +
   geom_point() +
   geom_errorbar(aes(ymin=act_better_FASHOS-2*act_better_FASHOS_sd,
-                    ymax=act_better_FASHOS+2*act_better_FASHOS_sd)) +
-  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high))
+                    ymax=act_better_FASHOS+2*act_better_FASHOS_sd), size=1, width=0) +
+  geom_errorbarh(aes(xmin=conf.low, xmax=conf.high), size=1, height=0) +
+  xlab("Experimental HOS segmentation") +
+  ylab("HOS usefulness (linear activation)") +
+  theme_bw()
+
+experimentHOSPlot <- ggpubr::ggarrange(plotlist = list(experimentHOSSegPlot,
+                                            experimentHOSAgreementPlot),
+                                       nrow=1, common.legend=TRUE,
+                                       labels=list("(A)", "(B)"), legend="right")
+
+experimentFASHOSPlot <- ggpubr::ggarrange(plotlist = list(experimentFASHOSSegPlot,
+                                            experimentFASHOSAgreementPlot),
+                                       nrow=1, common.legend=TRUE,
+                                       labels=list("(A)", "(B)"), legend="right")
+
+saveHOSName <- paste("../../data/plots/9_experiment_model", "_HOS", ".png", sep="")
+#saveHOSName <- paste("../../data/plots/9_experiment_model", "_HOS", "_texture.png", sep="")
+ggsave(saveHOSName, experimentHOSPlot, width=23, height=10, units="cm") 
+saveFASHOSName <- paste("../../data/plots/9_experiment_model", "_FASHOS", ".png", sep="")
+#saveFASHOSName <- paste("../../data/plots/9_experiment_model", "_FASHOS", "_texture.png", sep="")
+ggsave(saveFASHOSName, experimentFASHOSPlot, width=22, height=10, units="cm") 
+
 
