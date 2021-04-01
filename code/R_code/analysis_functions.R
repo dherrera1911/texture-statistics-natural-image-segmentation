@@ -351,9 +351,6 @@ train_test_dnn <- function(trainData, testData, statsToUse=NA,
                                         labelColumn=labelColumn,
                                         varianceRetained=varianceRetained,
                                         normalizeData=normalizeData)
-  preparedData <- prepare_data_fit_test(trainData, testData,
-                                        statsToUse, balanceWeights,
-                                        subsetsPCA, normalizeData)
   modelDNN <- make_dnn_model(layerUnits, ncol(preparedData$trainStats),
                              regularizationWeight)
   # move sample weights to python

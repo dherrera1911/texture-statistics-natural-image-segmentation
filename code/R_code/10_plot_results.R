@@ -188,7 +188,7 @@ ggsave(texturePlotName, textureDNNPlot2, width=10, height=7, units = "cm")
 #############################
 #############################
 
-bsdFile <- "../../data/BSD_results/3_BSD_results.RDS"
+bsdFile <- "../../data/BSD_results/3_BSD_results_noNorm.RDS"
 bsdRes <- readRDS(bsdFile) %>%
   dplyr::mutate(., statsName=assign_stat_name_plot(pixel, FAS, HOS),
                 error=1-performance)

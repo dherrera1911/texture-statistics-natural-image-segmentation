@@ -27,6 +27,13 @@ parNames <- names(segmentStats)
 statisticsNames <- get_statistics_names(parNames)
 designNames <- statisticsNames$design
 statisticsNames <- statisticsNames[which(names(statisticsNames)!="design")]
+# make name list for doing PCA within subsets of HOS
+statisticsNamesFiner <- get_statistics_names(parNames, subsetHOS=TRUE)
+statisticsNamesFiner <- statisticsNamesFiner[which(names(statisticsNamesFiner)!="design")]
+statisticsNamesFiner <- c(list(pixel=statisticsNamesFiner$pixel),
+                          list(FAS=statisticsNamesFiner$FAS),
+                          statisticsNamesFiner$HOS)
+
 
 #############################
 #generate template of design matrix for one repetition
