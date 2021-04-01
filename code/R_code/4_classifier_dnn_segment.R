@@ -13,6 +13,7 @@ layerUnits <- c(30)
 regularizationWeight <- 0.01
 epochs <- 300
 subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
+finerSubset <- FALSE # whether to subset the HOS subsets separately
 normalizeData <- FALSE
 
 # load data
@@ -77,8 +78,14 @@ for (r in 1:repExp) {
     trialTypes <- statsTypes[statsInd]
     trialStatsList <- statisticsNames[trialTypes]
     trialStatsVec <- unlist_names(trialStatsList) 
-    if (subsetPCA) {
-      pcaStatsSubsets <- statisticsNamesFiner
+    if (is.na(subsetPCA)) {
+      pcaStatsSubsets <- NA
+    } else if (subsetPCA) {
+      if (finerSubset) {
+        pcaStatsSubsets <- statisticsNamesFiner
+      } else {
+        pcaStatsSubsets <- trialStatsList
+      }
     } else {
       pcaStatsSubsets <- list(all=trialStatsVec)
     }

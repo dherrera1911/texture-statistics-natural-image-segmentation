@@ -10,6 +10,7 @@ dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
 saveResults <- "../../data/BSD_results/3_BSD_results_noNorm.RDS"
 repExp <- 20
 subsetPCA <- NA
+finerSubset <- FALSE # whether to subset the HOS subsets separately
 pcaVar <- NA
 normalizeData <- FALSE
 
@@ -78,7 +79,11 @@ for (r in 1:repExp) {
     if (is.na(subsetPCA)) {
       pcaStatsSubsets <- NA
     } else if (subsetPCA) {
-      pcaStatsSubsets <- statisticsNamesFiner
+      if (finerSubset) {
+        pcaStatsSubsets <- statisticsNamesFiner
+      } else {
+        pcaStatsSubsets <- trialStatsList
+      }
     } else {
       pcaStatsSubsets <- list(all=trialStatsVec)
     }

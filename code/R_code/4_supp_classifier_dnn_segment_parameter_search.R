@@ -5,15 +5,16 @@ source("./analysis_functions.R")
 set.seed(2691)
 
 dataFile <- "../../data/BSD_stats/BSD_stats_Corr.csv"
-saveResults <- "../../data/BSD_results/4_BSD_dnn_params.Rds"
-saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_params_history.Rds"
+saveResults <- "../../data/BSD_results/4_BSD_dnn_params_subsetPCA.Rds"
+saveResultsHistory <- "../../data/BSD_results/4_BSD_dnn_params_history_subsetPCA.Rds"
 
 repExp <- 10
-layerUnits <- list(c(30), c(10), c(30, 10), c(30, 10, 2))
+layerUnits <- list(c(30), c(30, 10))
 #layerUnits <- list(c(50), c(50, 20)), c(50, 20, 5), c(10, 2))
-regularizationWeight <- c(0.003)
-epochs <- c(350)
-subsetPCA <- FALSE #whether to do the PCA separately for each group of statistics
+regularizationWeight <- c(0.01)
+epochs <- c(300)
+subsetPCA <- TRUE # whether to do the PCA separately for each group of statistics
+finerSubset <- FALSE # whether to subset the HOS subsets separately
 
 # load data
 segmentStats <- read.csv(dataFile, sep = ",") %>%
@@ -38,9 +39,9 @@ statisticsNamesFiner <- c(list(pixel=statisticsNamesFiner$pixel),
 #############################
 #generate template of design matrix for one repetition
 #############################
-pixel <- c(1)
+pixel <- c(0,1)
 FAS <- c(0,1)
-HOS <- c(1)
+HOS <- c(0,1)
 statsTypes <- c("pixel", "FAS", "HOS")
 designMatrixTemp <- expand.grid(pixel, FAS, HOS) %>%
   dplyr::mutate(., rep=NA, performance=NA) %>%
@@ -89,8 +90,14 @@ for (r in 1:repExp) {
           trialTypes <- statsTypes[statsInd]
           trialStatsList <- statisticsNames[trialTypes]
           trialStatsVec <- unlist_names(trialStatsList) 
-          if (subsetPCA) {
-            pcaStatsSubsets <- statisticsNamesFiner
+          if (is.na(subsetPCA)) {
+            pcaStatsSubsets <- NA
+          } else if (subsetPCA) {
+            if (finerSubset) {
+              pcaStatsSubsets <- statisticsNamesFiner
+            } else {
+              pcaStatsSubsets <- trialStatsList
+            }
           } else {
             pcaStatsSubsets <- list(all=trialStatsVec)
           }
